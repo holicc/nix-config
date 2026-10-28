@@ -15,9 +15,9 @@
     };
 
     # Noctalia 桌面 Shell：走 flake input 而非 nixpkgs 自带包，以便跟进上游。
-    # 此项目接口仍在变动；若升级后 rebuild 报错，请查阅 docs.noctalia.dev
+    # 使用 main 分支（v5）。此项目接口仍在变动；若升级后 rebuild 报错，请查阅 docs.noctalia.dev
     noctalia = {
-      url = "github:noctalia-dev/noctalia/legacy-v4";
+      url = "github:noctalia-dev/noctalia";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
