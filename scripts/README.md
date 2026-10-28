@@ -25,7 +25,7 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 | `gc` | 清理 7 天前的旧版本，之后无法回滚到更早的版本 | 是 |
 | `status` | 内核、系统版本、本地 input 是否存在、仓库状态、关键服务 | 否 |
 | `proxy init` | 提示粘贴订阅地址（输入不显示），**下载订阅**，取其中的节点、节点组、规则，拼在基础设置 `examples/mihomo/config.example.yaml` 后面，写入 `~/.config/mihomo/config.yaml`（权限 600）；订阅地址另存到 `~/.config/mihomo/subscription.url`（权限 600） | 否 |
-| `proxy update` | 用保存的订阅地址重新下载，刷新节点和规则（订阅是静态拼进配置的，节点变了要手动更新；更新后重启 mihomo 才生效） | 否 |
+| `proxy update` | 用保存的订阅地址重新下载，刷新节点和规则（订阅是静态拼进配置的，节点变了要手动更新；更新后重启 mihomo 才生效）；同时重新下载 `geoip.metadb` | 否 |
 | `proxy on` / `proxy off` | 启动 / 停止 mihomo 服务（默认不随开机启动） | 是 |
 | `proxy status` | 服务状态，以及 TUN 是否开启 | 否 |
 | `proxy tun on\|off` | 运行时切换透明代理（TUN），不需要重新构建 | 否 |
@@ -38,6 +38,8 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 2. `nx proxy on` 启动。本机代理端口是 `127.0.0.1:7890`，程序要设置 `https_proxy=http://127.0.0.1:7890` 才走代理。
 3. `nx proxy nodes` 看节点，`nx proxy use <编号>` 切换；订阅自带"自动选择"组，选它就是自动挑最快的节点。
 4. 节点变了用 `nx proxy update` 刷新，然后 `nx proxy off && nx proxy on` 生效。用完 `nx proxy off`。
+
+**为什么 `init` / `update` 还要下载 `geoip.metadb`：** 订阅规则里的 `GEOIP,CN` 需要这个地理数据库。mihomo 启动时找不到会自己下载，但这台机器上下载很慢（8.4MB 实测 51 秒），超过它的 90 秒超时就 fatal 退出，服务整个起不来（日志里是 `Can't find MMDB, start download` 加 `can't download MMDB: context deadline exceeded`）。所以脚本在用户态预先下载到 `~/.config/mihomo/geoip.metadb`（超时宽松、自动重试），服务启动前由 `modules/nixos/mihomo.nix` 里的 `ExecStartPre` 以 root 复制进它的状态目录。这一项需要 `nx switch` 之后才生效。
 
 **配置是怎么来的：** 最终配置 = 基础设置（`examples/mihomo/config.example.yaml`，端口、DNS、TUN、API 都以它为准）+ 订阅里的 `proxies` / `proxy-groups` / `rules`。订阅里的其余设置会被丢弃，所以服务商改了端口或 DNS 不会影响本机。节点组名因服务商而异，脚本自动取规则里最后一条 `MATCH` 指向的组（你的订阅里是 `FSCloud`），也可用环境变量 `MIHOMO_GROUP` 指定。
 

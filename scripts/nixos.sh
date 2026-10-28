@@ -214,6 +214,25 @@ proxy_urlenc() {
   printf '%s' "$out"
 }
 
+# 预先下载 geoip.metadb：订阅规则里的 GEOIP,CN 需要它。mihomo 启动时找不到会自己下载，
+# 但这台机器上下载很慢（8.4MB 实测 51 秒），超过它的 90 秒超时就整个服务起不来。
+# 所以在这里（用户态，超时宽松、自动重试）先下载好，服务启动前由 root 复制进它的状态目录
+# （见 modules/nixos/mihomo.nix 的 ExecStartPre）。下载地址取自基础设置里的 geox-url.mmdb
+PROXY_GEODB="${MIHOMO_GEODB:-$(dirname "$PROXY_CONF")/geoip.metadb}"
+proxy_fetch_geodata() {
+  local url
+  url="$(grep -m1 -E '^  mmdb:' examples/mihomo/config.example.yaml | sed -E 's/^  mmdb: *"?([^"]*)"?.*/\1/')"
+  if [ -z "$url" ]; then warn "no geox-url.mmdb in the base settings; skipping the geoip.metadb download"; return 0; fi
+  say "Downloading geoip.metadb (about 8 MB; the mirror can be slow, up to a few minutes)"
+  if curl -fL --retry 3 --retry-delay 2 -m 300 -o "${PROXY_GEODB}.part" "$url" 2>/dev/null; then
+    mv "${PROXY_GEODB}.part" "$PROXY_GEODB"
+    ok "Saved ${PROXY_GEODB}"
+  else
+    rm -f "${PROXY_GEODB}.part"
+    warn "geoip.metadb download failed; mihomo will try to download it itself on start (may time out). Retry: $(basename "$0") proxy update"
+  fi
+}
+
 # 通过 mihomo 的本地 API 读取节点组信息；不依赖 jq，用 grep/sed 解析 JSON
 proxy_group_json() { curl -sf -m 8 "http://${PROXY_API}/proxies/$(proxy_urlenc "$(proxy_group)")"; }
 
@@ -280,6 +299,7 @@ cmd_proxy() {
       (umask 077; printf '%s\n' "$url" > "$PROXY_SUB_URL_FILE")
       chmod 600 "$PROXY_SUB_URL_FILE"
       ok "Config written to ${PROXY_CONF} (mode 600, never commit it)"
+      proxy_fetch_geodata
       echo "   Subscription URL kept in ${PROXY_SUB_URL_FILE} (mode 600) for '$(basename "$0") proxy update'"
       say "Next: $(basename "$0") proxy on"
       ;;
@@ -289,6 +309,7 @@ cmd_proxy() {
       say "Re-downloading the subscription and rebuilding the config"
       proxy_build_config "$(head -1 "$PROXY_SUB_URL_FILE")"
       ok "Config updated: ${PROXY_CONF}"
+      proxy_fetch_geodata
       if systemctl is-active --quiet mihomo; then
         warn "mihomo is running with the old config; apply it with: $(basename "$0") proxy off && $(basename "$0") proxy on"
       fi
@@ -297,6 +318,8 @@ cmd_proxy() {
       [ -f "$PROXY_CONF" ] || die "no config file; run '$(basename "$0") proxy init' first"
       grep -q -E '^(proxies|proxy-providers):' "$PROXY_CONF" \
         || die "the config has no proxies; run '$(basename "$0") proxy init' to build it from your subscription"
+      [ -f "$PROXY_GEODB" ] \
+        || warn "no geoip.metadb yet; mihomo will download it itself and may time out (run: $(basename "$0") proxy update)"
       sudo systemctl start mihomo
       ok "mihomo started 🚀"
       echo "   Local HTTP/SOCKS proxy: http://127.0.0.1:${PROXY_PORT}  (e.g. https_proxy=http://127.0.0.1:${PROXY_PORT} git push)"

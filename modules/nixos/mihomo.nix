@@ -1,6 +1,6 @@
 # 代理：mihomo（Clash.Meta 内核），主要给 nix 和 git 访问 GitHub 用，也可按需开透明代理（TUN）。
 # 不装 webui：用 `./scripts/nixos.sh proxy ...` 管理，需要时通过 mihomo 的本地 API 切换 TUN。
-{ lib, ... }:
+{ lib, pkgs, ... }:
 {
   services.mihomo = {
     enable = true;
@@ -39,6 +39,19 @@
   # 安全性：TUN 的另一端就是 mihomo 自己，没有外部对端，信任它不会向外暴露端口。
   # 网卡名 Meta 是 mihomo 的默认值，基础设置里也显式写了 device: Meta，两边要保持一致
   networking.firewall.trustedInterfaces = [ "Meta" ];
+
+  # 启动前把预先下载好的 geoip.metadb 复制进 mihomo 的状态目录。
+  # 背景：订阅规则里的 GEOIP,CN 需要这个数据库，mihomo 启动时找不到会自己下载，而这台机器上
+  # 下载很慢（实测 8.4MB 用了 51 秒），超过它的 90 秒超时就会 fatal 退出，服务整个起不来。
+  # 所以由 `nx proxy init/update` 在用户态预先下载到 ~/.config/mihomo/geoip.metadb（超时宽松、可重试），
+  # 这里在启动前复制过去。
+  # ExecStartPre 的前缀：`-` 表示复制失败（比如文件还没下载）也不阻止启动，退回到 mihomo 自己下载；
+  # `+` 表示以完整权限运行，不受该服务 ProtectHome 等沙箱限制（否则读不到 /home 下的文件）。
+  # 排查方向：`journalctl -u mihomo -b` 里仍出现 "Can't find MMDB, start download"，
+  # 说明复制没成功，检查 ~/.config/mihomo/geoip.metadb 是否存在
+  systemd.services.mihomo.serviceConfig.ExecStartPre = [
+    "-+${pkgs.coreutils}/bin/install -D -m 0644 /home/joe/.config/mihomo/geoip.metadb /var/lib/private/mihomo/geoip.metadb"
+  ];
 
   # 不随开机启动：续航优先，不用代理时完全不占资源。
   # 需要时 `nx proxy on`，用完 `proxy off`
