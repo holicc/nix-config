@@ -1,7 +1,8 @@
 # joe 用户级配置入口：只放基础信息和 imports，具体配置按职责拆在子目录：
 #   niri/     窗口管理器 Niri：几个 .kdl 文件拼成 ~/.config/niri/config.kdl
 #   noctalia/ 桌面 Shell Noctalia v5：状态栏、启动器、通知、主题等设置
-#   alacritty/ 终端：Catppuccin Mocha 配色、字体、去标题栏
+#   theme/    统一配色：catppuccin/nix（Mocha），Alacritty、btop、bat 等自动套用
+#   alacritty/ 终端：字体、内边距、去标题栏（配色由 theme 提供）
 #   shell/    命令行环境：Nushell + Starship 提示符
 # 由 flake.nix 以 NixOS 模块方式集成，`nixos-rebuild switch` 会一并应用系统配置和这里的用户配置
 { pkgs, ... }:
@@ -9,6 +10,7 @@
   imports = [
     ./niri
     ./noctalia
+    ./theme
     ./alacritty
     ./shell
   ];
