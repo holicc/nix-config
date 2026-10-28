@@ -190,16 +190,24 @@ cmd_proxy() {
   shift || true
   case "$sub" in
     init)
-      # 复制模板到仓库外并收紧权限；已存在则不覆盖，避免丢掉你填好的订阅
-      if [ -e "$PROXY_CONF" ]; then
-        warn "already exists, not overwriting: ${PROXY_CONF}"
-      else
+      # 只需要输入订阅地址：配置文件不存在就先从模板复制，然后只替换其中的订阅地址那一行。
+      # 地址用 read -s 读取：输入不回显，也不会进命令历史或进程参数列表
+      if [ ! -e "$PROXY_CONF" ]; then
         mkdir -p "$(dirname "$PROXY_CONF")"
         cp examples/mihomo/config.example.yaml "$PROXY_CONF"
-        chmod 600 "$PROXY_CONF"
-        ok "Created ${PROXY_CONF} (mode 600)"
+        ok "Created ${PROXY_CONF} from the template"
       fi
-      say "Next: edit it and replace proxy-providers.sub.url with your subscription URL (never commit it)"
+      local url esc
+      read -r -s -p "Paste your subscription URL (input is hidden): " url
+      echo
+      case "$url" in http://*|https://*) ;; *) die "that does not look like an http(s) URL" ;; esac
+      case "$url" in *'"'*|*[[:space:]]*) die "the URL must not contain spaces or double quotes" ;; esac
+      # 转义 sed 替换串里的特殊字符（反斜杠、&、分隔符 |）
+      esc="$(printf '%s' "$url" | sed -e 's/[\\&|]/\\&/g')"
+      sed -i "s|^\(    url: \)\".*\"|\1\"${esc}\"|" "$PROXY_CONF"
+      chmod 600 "$PROXY_CONF"
+      ok "Subscription URL saved to ${PROXY_CONF} (mode 600, never commit it)"
+      say "Next: $(basename "$0") proxy on"
       ;;
     on)
       [ -f "$PROXY_CONF" ] || die "no config file; run '$(basename "$0") proxy init' first and fill in your subscription URL"
@@ -207,8 +215,10 @@ cmd_proxy() {
         die "config still contains the placeholder; put your subscription URL into ${PROXY_CONF}"
       fi
       sudo systemctl start mihomo
-      ok "mihomo started 🚀  local proxy: http://127.0.0.1:${PROXY_PORT}"
-      echo "   Run a command through the proxy: $(basename "$0") proxy run <command>   e.g. proxy run git push"
+      ok "mihomo started 🚀"
+      echo "   With TUN on (the default in the template) all traffic goes through the proxy; no per-command setup needed."
+      echo "   A local HTTP/SOCKS proxy is also available at http://127.0.0.1:${PROXY_PORT}"
+      echo "   If SSH or the LAN misbehaves: $(basename "$0") proxy tun off   or   $(basename "$0") proxy off"
       ;;
     off)
       sudo systemctl stop mihomo
@@ -232,14 +242,7 @@ cmd_proxy() {
         -d "{\"tun\":{\"enable\":${state}}}" || die "switching failed; is mihomo running? (proxy on)"
       ok "TUN set to ${state}"
       ;;
-    run)
-      # 让一条命令走代理，例如：proxy run git push / proxy run nix flake show
-      [ "$#" -gt 0 ] || die "usage: $(basename "$0") proxy run <command>"
-      systemctl is-active --quiet mihomo || die "mihomo is not running; run '$(basename "$0") proxy on' first"
-      https_proxy="http://127.0.0.1:${PROXY_PORT}" http_proxy="http://127.0.0.1:${PROXY_PORT}" \
-      HTTPS_PROXY="http://127.0.0.1:${PROXY_PORT}" HTTP_PROXY="http://127.0.0.1:${PROXY_PORT}" "$@"
-      ;;
-    *) die "unknown proxy subcommand: ${sub} (init|on|off|status|tun|run)" ;;
+    *) die "unknown proxy subcommand: ${sub} (init|on|off|status|tun)" ;;
   esac
 }
 
@@ -258,11 +261,10 @@ Usage: $(basename "$0") <command>
   gc        Remove generations older than 7 days (sudo)
   status    Kernel, generation, local inputs, repo state, key services
   proxy     Proxy (mihomo / Clash core), subcommands:
-              init          copy the config template to ~/.config/mihomo/config.yaml; fill in your subscription yourself
+              init          paste your subscription URL (hidden input); creates ~/.config/mihomo/config.yaml from the template
               on | off      start / stop the service (sudo; not started at boot, saves power)
               status        service state and whether TUN is on
               tun on|off    toggle transparent proxy (TUN) at runtime, no rebuild needed
-              run <cmd>     run one command through the proxy, e.g.  proxy run git push
   help      Show this help
 
 Environment (optional): NIXOS_HOST=${HOST}  NIXOS_USER=${USER_NAME}  NIX_INPUTS_DIR=${INPUTS_DIR}

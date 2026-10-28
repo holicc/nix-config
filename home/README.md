@@ -7,6 +7,8 @@
 | `default.nix` | 用户名、家目录、`home.stateVersion`，import 下面两个子目录，并安装 `nx` 命令（转调 `scripts/nixos.sh` 的包装） |
 | `niri/` | 窗口管理器 Niri 的配置 |
 | `noctalia/default.nix` | 桌面 Shell Noctalia v5 的全部设置 |
+| `alacritty/default.nix` | Alacritty 终端：Catppuccin Mocha 配色（与 Noctalia 的 Catppuccin 深色一致）、CaskaydiaCove Nerd Font、内边距、去掉自带标题栏。**不要开 Noctalia 的 Alacritty 应用主题模板**，会与这里冲突；Noctalia 切到浅色模式时终端仍是深色 |
+| `shell/default.nix` | 命令行环境：Nushell（结构化数据的现代 shell）+ Starship（跨 shell 的提示符，同时在 bash 和 Nushell 里启用）。**登录 shell 仍是 bash**，输入 `nu` 进入 Nushell |
 
 ## niri/
 

@@ -1,26 +1,27 @@
 # mihomo 配置模板：不含任何订阅或密钥，可以放心提交到公开仓库。
-# 使用：./scripts/nixos.sh proxy init   会把它复制到 ~/.config/mihomo/config.yaml（权限 600），
-# 然后编辑那份副本，把下面的订阅地址换成你自己的。**不要把填好订阅的文件提交到 git。**
+# 使用：nx proxy init   会提示你粘贴订阅地址，并把本模板复制到 ~/.config/mihomo/config.yaml
+# （权限 600），只替换其中的订阅地址那一行。**不要把填好订阅的文件提交到 git。**
 #
 # 文档：https://wiki.metacubex.one/
 
-# 本机代理端口（HTTP + SOCKS5 混合）。nix、git 通过它访问外网：
-#   ./scripts/nixos.sh proxy run <命令>
+# 本机代理端口（HTTP + SOCKS5 混合）。TUN 开启时不需要用它，所有流量自动走代理；
+# TUN 关闭时，程序要自己配置 https_proxy=http://127.0.0.1:7890 才会走代理
 mixed-port: 7890
 allow-lan: false          # 不对局域网开放，只给本机用
 mode: rule
 log-level: info
 
-# 本地 API，仅监听本机，没有网页界面；脚本用它切换 TUN（proxy tun on|off）。
+# 本地 API，仅监听本机，没有网页界面；脚本用它切换 TUN（nx proxy tun on|off）。
 # 同机的任何程序都能调用它，如果在意可以取消下一行注释设置密钥
 # （脚本读取不了密钥时，需要改脚本里的 curl 加上 Authorization 头）。
 external-controller: 127.0.0.1:9090
 # secret: "改成一个随机字符串"
 
-# 透明代理（TUN）：默认关闭，需要全局代理时 `./scripts/nixos.sh proxy tun on`。
-# 开启会让所有流量经过 mihomo，更耗电；不用时保持关闭，普通代理（上面的 7890）仍可用。
+# 透明代理（TUN）：默认开启，所以 `nx proxy on` 启动后就是全局代理，所有程序不用任何设置。
+# 代价：更耗电；自动路由配错可能影响局域网和 SSH（下面 rules 里已让局域网网段直连）。
+# 出问题时：`nx proxy tun off` 关掉透明代理，或 `nx proxy off` 停掉整个服务。
 tun:
-  enable: false
+  enable: true
   stack: mixed
   auto-route: true
   auto-detect-interface: true

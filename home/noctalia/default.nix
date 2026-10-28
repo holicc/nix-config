@@ -57,6 +57,11 @@
       # 壁纸目录：启动器 /wall 和状态栏壁纸图标从这里读取图片
       wallpaper.directory = "/home/joe/Pictures/Wallpapers";
 
+      # 默认壁纸：目录只决定列表里有哪些图，不会自动选中其中某一张；这里指定当前使用的一张。
+      # 该图（1920x1170）比屏幕（2560x1600）小，用 crop 铺满会略有放大。
+      # 在界面里换壁纸后，选择保存在 ~/.local/state/noctalia/，优先级更高，会盖过这里
+      wallpaper.default.path = "/home/joe/Pictures/Wallpapers/blueprint.png";
+
       # 空闲管理：10 分钟无操作锁屏，11 分钟关闭屏幕（续航）。
       # 刻意不开自动挂起：这台机器靠 SSH 管理，挂起会让 SSH 断开。
       # 锁屏走 PAM 的 login 服务，已确认 /etc/pam.d/login 存在

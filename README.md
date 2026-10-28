@@ -55,14 +55,13 @@ nx help      # 全部命令
 这台机器访问 GitHub 很慢，装了 mihomo（Clash 内核）作为**按需启动**的代理服务，主要给 nix 和 git 用：
 
 ```bash
-nx proxy init      # 生成配置副本，然后编辑它，填入你的订阅地址
-nx proxy on        # 启动
-nx proxy run git push    # 让某条命令走代理
-nx proxy off       # 停止（不用时不占电）
+nx proxy init      # 按提示粘贴订阅地址（输入不显示），其余配置用模板
+nx proxy on        # 启动，默认就是全局代理（TUN），不用给命令单独设置
+nx proxy off       # 停止（不用时不占电，服务不随开机启动）
 ```
 
-- 订阅地址在 `~/.config/mihomo/config.yaml`，**在仓库外，绝不要提交**；仓库里只有不含订阅的模板 `examples/mihomo/config.example.yaml`。
-- 透明代理（TUN）默认关闭，需要时 `nx proxy tun on`，不需要重新构建。
+- 订阅地址保存在 `~/.config/mihomo/config.yaml`，**在仓库外，绝不要提交**；仓库里只有不含订阅的模板 `examples/mihomo/config.example.yaml`。
+- 模板默认开启透明代理（TUN），所以启动后所有程序自动走代理；想临时关掉用 `nx proxy tun off`，不需要重新构建。TUN 更耗电，而且自动路由配错可能影响局域网和 SSH，**第一次开启时请保留一个已登录的 SSH 会话兜底**。
 - 没有安装 webui，管理都通过 `nx proxy`。详见 `scripts/README.md`。
 
 ## 软件与服务
@@ -73,6 +72,7 @@ nx proxy off       # 停止（不用时不占电）
 | 电源 | TLP（`power-profiles-daemon` 必须关闭，两者互斥）、UPower（电池显示） |
 | 连接 | NetworkManager、BlueZ（蓝牙，开机默认不上电以省电）、OpenSSH、mihomo（代理，按需启动） |
 | 字体 | CaskaydiaCove Nerd Font、Noto CJK 中文 |
+| 命令行 | Nushell + Starship 提示符（登录 shell 仍是 bash，输入 `nu` 进入 Nushell） |
 | 开发 | Rust 走项目级 `nix develop`，**不在系统全局安装**，模板见 `examples/rust-flake-template/flake.nix` |
 
 ## 注意事项（踩过的坑）
