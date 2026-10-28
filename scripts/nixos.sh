@@ -358,8 +358,39 @@ cmd_proxy() {
         || die "switching failed; check the exact name with: $(basename "$0") proxy nodes"
       ok "Switched $(proxy_group) to: ${name}"
       ;;
-    *) die "unknown proxy subcommand: ${sub} (init|update|on|off|status|tun|nodes|use)" ;;
+    *) die "unknown proxy subcommand: ${sub} (init|update|on|off|status|tun|nodes|use; see: $(basename "$0") proxy help)" ;;
   esac
+}
+
+# proxy 子命令的说明行（主帮助和 `proxy help` 共用，只在这里维护一份）
+proxy_usage_lines() {
+  cat <<EOF
+              init          paste your subscription URL (hidden input); downloads it and builds ~/.config/mihomo/config.yaml
+              update        re-download the saved subscription to refresh nodes and rules
+              on | off      start / stop the service (sudo; not started at boot, saves power)
+              status        service state, current node and whether TUN is on (default)
+              tun on|off    toggle transparent proxy (TUN) at runtime, no rebuild needed
+              nodes         list the members of the current node group (current one marked)
+              use <n|name>  switch node by number (from "nodes") or by exact name
+EOF
+}
+
+proxy_usage() {
+  cat <<EOF
+Usage: $(basename "$0") proxy [subcommand]
+
+Proxy (mihomo / Clash core). Without a subcommand it shows the status.
+
+Subcommands:
+$(proxy_usage_lines)
+  help      Show this help
+
+Environment (optional):
+  MIHOMO_CONF=${PROXY_CONF}
+  MIHOMO_GROUP=<group>   node group used by nodes/use (default: the group of the last MATCH rule, now: $(proxy_group 2>/dev/null || echo unknown))
+  MIHOMO_UA=${PROXY_UA}   User-Agent used to download the subscription
+  MIHOMO_PORT=${PROXY_PORT}  MIHOMO_API=${PROXY_API}
+EOF
 }
 
 usage() {
@@ -376,19 +407,19 @@ Usage: $(basename "$0") <command>
   pkgs      List installed packages and fonts
   gc        Remove generations older than 7 days (sudo)
   status    Kernel, generation, local inputs, repo state, key services
-  proxy     Proxy (mihomo / Clash core), subcommands:
-              init          paste your subscription URL (hidden input); downloads it and builds ~/.config/mihomo/config.yaml
-              update        re-download the saved subscription to refresh nodes and rules
-              on | off      start / stop the service (sudo; not started at boot, saves power)
-              status        service state and whether TUN is on
-              tun on|off    toggle transparent proxy (TUN) at runtime, no rebuild needed
-              nodes         list the nodes of the PROXY group (current one marked)
-              use <n|name>  switch node by number (from "nodes") or by exact name
-  help      Show this help
+  proxy     Proxy (mihomo / Clash core), subcommands (details: proxy help):
+$(proxy_usage_lines)
+  help      Show this help (also: -h, --help; works after any command, e.g. "proxy --help")
 
 Environment (optional): NIXOS_HOST=${HOST}  NIXOS_USER=${USER_NAME}  NIX_INPUTS_DIR=${INPUTS_DIR}
 EOF
 }
+
+# 任何命令后面带 -h / --help 都只显示帮助，不去执行（例如 `nx switch --help` 不会真的切换系统）
+if [ "${2:-}" = "-h" ] || [ "${2:-}" = "--help" ]; then
+  case "${1:-}" in proxy) proxy_usage ;; *) usage ;; esac
+  exit 0
+fi
 
 case "${1:-help}" in
   check)  cmd_check ;;
@@ -401,7 +432,7 @@ case "${1:-help}" in
   pkgs)   cmd_pkgs ;;
   gc)     cmd_gc ;;
   status) cmd_status ;;
-  proxy)  shift; cmd_proxy "$@" ;;
+  proxy)  shift; case "${1:-}" in help|-h|--help) proxy_usage ;; *) cmd_proxy "$@" ;; esac ;;
   help|-h|--help) usage ;;
   *) usage; exit 1 ;;
 esac
