@@ -62,8 +62,8 @@ nx proxy off       # 停止（不用时不占电）
 ```
 
 - 订阅地址在 `~/.config/mihomo/config.yaml`，**在仓库外，绝不要提交**；仓库里只有不含订阅的模板 `examples/mihomo/config.example.yaml`。
-- 透明代理（TUN）默认关闭，需要时 `proxy tun on`，不需要重新构建。
-- 没有安装 webui，管理都通过脚本。详见 `scripts/README.md`。
+- 透明代理（TUN）默认关闭，需要时 `nx proxy tun on`，不需要重新构建。
+- 没有安装 webui，管理都通过 `nx proxy`。详见 `scripts/README.md`。
 
 ## 软件与服务
 

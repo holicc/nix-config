@@ -8,7 +8,7 @@
 #
 # 用法：nx <命令>（home/default.nix 装的包装命令）或 ./scripts/nixos.sh <命令>；
 #       不带参数或 help 查看全部命令。
-# 需要 sudo 的命令（switch/test/boot/gc/proxy on|off）会提示输入密码，脚本不会也不能代输。
+# 需要 sudo 的命令（switch/test/boot/gc）会提示输入密码，脚本不会也不能代输。
 # 注意：脚本的运行输出统一用英文 + emoji（成功 ✅、步骤 🔹、警告 ⚠️、错误 ❌），注释保持中文。
 
 set -euo pipefail
@@ -37,6 +37,17 @@ ok()   { printf '\033[1;32m✅ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m⚠️  %s\033[0m\n' "$*"; }
 die()  { printf '\033[1;31m❌ Error: %s\033[0m\n' "$*" >&2; exit 1; }
 
+# 过滤 nix 的 "not writing modified lock file" 警告块：因为我们用了 --override-input 和
+# --no-write-lock-file，每条 nix 命令都会打印这一大段（含 Updated/Added input 的列表），
+# 淹没真正有用的输出。只去掉这一段，其他警告和错误原样保留。
+lock_filter() {
+  awk '
+    /^warning: not writing modified lock file/ { skip = 1; next }
+    skip && /^([•]|[[:space:]])/               { next }
+    { skip = 0; print }
+  '
+}
+
 # 本地 input 副本必须存在，否则给出明确提示而不是让 nix 报一堆难懂的错
 need_inputs() {
   [ -d "${INPUTS_DIR}/nixpkgs" ] || die "cannot find ${INPUTS_DIR}/nixpkgs (local nixpkgs source copy)"
@@ -51,7 +62,7 @@ stage() {
 
 # 构建但不切换，只输出构建结果的 store 路径（不在仓库里留下 result 链接）
 build_path() {
-  nix build "$TOPLEVEL" --no-link --print-out-paths "${OVERRIDES[@]}"
+  nix build "$TOPLEVEL" --no-link --print-out-paths "${OVERRIDES[@]}" 2> >(lock_filter >&2)
 }
 
 # 校验：求值系统配置 + 用 niri 校验生成的 config.kdl（不构建，几十秒内完成）
@@ -59,16 +70,19 @@ cmd_check() {
   need_inputs
   stage
   say "Evaluating system configuration (syntax, options, references)"
-  nix eval --raw "${TOPLEVEL}.drvPath" "${OVERRIDES[@]}" >/dev/null
+  nix eval --raw "${TOPLEVEL}.drvPath" "${OVERRIDES[@]}" >/dev/null 2> >(lock_filter >&2)
   ok "System configuration evaluates"
 
   say "Validating generated Niri config"
-  local tmp
+  # 不用 trap 清理临时文件：RETURN trap 是全局的，函数返回后依然有效，
+  # 会在别的函数返回时再次触发，那时局部变量已不存在（set -u 下会报 unbound variable）
+  local tmp niri_ok=1
   tmp="$(mktemp --suffix=.kdl)"
-  trap 'rm -f "$tmp"' RETURN
   nix eval --raw ".#nixosConfigurations.${HOST}.config.home-manager.users.${USER_NAME}.xdg.configFile.\"niri/config.kdl\".text" \
-    "${OVERRIDES[@]}" > "$tmp"
-  niri validate -c "$tmp"
+    "${OVERRIDES[@]}" > "$tmp" 2> >(lock_filter >&2) || niri_ok=0
+  if [ "$niri_ok" = 1 ] && niri validate -c "$tmp" 2>&1 | grep -v -E 'DEBUG.*niri_config'; then :; else niri_ok=0; fi
+  rm -f "$tmp"
+  [ "$niri_ok" = 1 ] || die "Niri config validation failed (see output above)"
   ok "Niri config is valid"
   ok "All checks passed 🎉"
 }
@@ -104,7 +118,7 @@ rebuild() {
   say "Checking configuration first"
   cmd_check
   say "Running: sudo nixos-rebuild ${action}"
-  sudo nixos-rebuild "$action" --flake ".#${HOST}" "${OVERRIDES[@]}"
+  sudo nixos-rebuild "$action" --flake ".#${HOST}" "${OVERRIDES[@]}" 2> >(lock_filter >&2)
   ok "nixos-rebuild ${action} completed 🎉"
   if [ "$action" = "switch" ] || [ "$action" = "test" ]; then
     echo "   Tip: open a new shell (or run: hash -r) if a newly installed command is not found."
