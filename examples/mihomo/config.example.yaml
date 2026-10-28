@@ -45,6 +45,10 @@ geox-url:
 # 第一次开启时请保留一个已登录的 SSH 会话兜底，出问题 `nx proxy tun off`
 tun:
   enable: false
+  # 网卡名固定为 Meta：modules/nixos/mihomo.nix 里的防火墙 trustedInterfaces 按这个名字放行
+  device: Meta
+  # 暂时用 gvisor（已实测可用）。mixed / system 不通的原因推断是防火墙没放行 Meta 网卡，
+  # 已在 mihomo.nix 里加了 trustedInterfaces，switch 后用 mixed 实测通过再把这里改回 mixed
   stack: gvisor
   auto-route: true
   auto-detect-interface: true
