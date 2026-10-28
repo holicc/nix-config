@@ -24,7 +24,8 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 | `pkgs` | 列出已安装的软件包和字体 | 否 |
 | `gc` | 清理 7 天前的旧版本，之后无法回滚到更早的版本 | 是 |
 | `status` | 内核、系统版本、本地 input 是否存在、仓库状态、关键服务 | 否 |
-| `proxy init` | 提示粘贴订阅地址（输入不显示），写入 `~/.config/mihomo/config.yaml`（权限 600）；配置文件不存在时先从 `examples/mihomo/config.example.yaml` 复制，已存在则只替换订阅地址那一行 | 否 |
+| `proxy init` | 提示粘贴订阅地址（输入不显示），**下载订阅**，取其中的节点、节点组、规则，拼在基础设置 `examples/mihomo/config.example.yaml` 后面，写入 `~/.config/mihomo/config.yaml`（权限 600）；订阅地址另存到 `~/.config/mihomo/subscription.url`（权限 600） | 否 |
+| `proxy update` | 用保存的订阅地址重新下载，刷新节点和规则（订阅是静态拼进配置的，节点变了要手动更新；更新后重启 mihomo 才生效） | 否 |
 | `proxy on` / `proxy off` | 启动 / 停止 mihomo 服务（默认不随开机启动） | 是 |
 | `proxy status` | 服务状态，以及 TUN 是否开启 | 否 |
 | `proxy tun on\|off` | 运行时切换透明代理（TUN），不需要重新构建 | 否 |
@@ -33,12 +34,18 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 
 ## 代理（mihomo）使用流程
 
-1. `nx proxy init`，按提示粘贴订阅地址，其余配置用模板。
-2. `nx proxy on` 启动。模板里 TUN 默认开启，所以启动后就是**全局代理**，所有程序不用单独设置。
-3. 用完 `nx proxy off`。想只关透明代理、保留服务，用 `nx proxy tun off`（TUN 更耗电）。
+1. `nx proxy init`，按提示粘贴订阅地址。脚本会下载订阅，生成配置。
+2. `nx proxy on` 启动。本机代理端口是 `127.0.0.1:7890`，程序要设置 `https_proxy=http://127.0.0.1:7890` 才走代理。
+3. `nx proxy nodes` 看节点，`nx proxy use <编号>` 切换；订阅自带"自动选择"组，选它就是自动挑最快的节点。
+4. 节点变了用 `nx proxy update` 刷新，然后 `nx proxy off && nx proxy on` 生效。用完 `nx proxy off`。
 
-**订阅地址不要提交到 git**：配置文件在仓库外（`~/.config/mihomo/`），仓库里只有不含订阅的模板。
-**第一次开启 TUN 时请保留一个已登录的 SSH 会话**，万一自动路由影响了局域网，`proxy off` 可以恢复。
+**配置是怎么来的：** 最终配置 = 基础设置（`examples/mihomo/config.example.yaml`，端口、DNS、TUN、API 都以它为准）+ 订阅里的 `proxies` / `proxy-groups` / `rules`。订阅里的其余设置会被丢弃，所以服务商改了端口或 DNS 不会影响本机。节点组名因服务商而异，脚本自动取规则里最后一条 `MATCH` 指向的组（你的订阅里是 `FSCloud`），也可用环境变量 `MIHOMO_GROUP` 指定。
+
+**TUN（透明代理）默认关闭**：在这台机器上开启后系统 DNS 会失效，原因还在排查。可以用 `nx proxy tun on` 试，试之前请保留一个已登录的 SSH 会话，出问题 `nx proxy tun off` 即可恢复。
+
+**订阅地址和生成的配置都不要提交到 git**：它们在仓库外（`~/.config/mihomo/`），仓库里只有不含订阅的基础设置。
+
+**订阅服务器可能按 User-Agent 返回不同格式**：脚本默认用 `clash.meta`；如果提示"没有拿到 Clash/mihomo 配置"，试 `MIHOMO_UA=clash-verge nx proxy init`。
 
 ## 环境变量（可选）
 

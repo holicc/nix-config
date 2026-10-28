@@ -1,65 +1,71 @@
-# mihomo 配置模板：不含任何订阅或密钥，可以放心提交到公开仓库。
-# 使用：nx proxy init   会提示你粘贴订阅地址，并把本模板复制到 ~/.config/mihomo/config.yaml
-# （权限 600），只替换其中的订阅地址那一行。**不要把填好订阅的文件提交到 git。**
+# mihomo 基础配置：只放"我们自己的"设置，不含任何订阅、节点或密钥，可以放心提交到公开仓库。
+#
+# 最终配置 = 本文件 + 订阅里的 proxies / proxy-groups / rules（以及 proxy-providers / rule-providers）。
+# `nx proxy init` 和 `nx proxy update` 会下载你的订阅，只取上述几段，拼在本文件后面，
+# 写到 ~/.config/mihomo/config.yaml（权限 600）。订阅里的端口、DNS、TUN 等其余设置会被丢弃，
+# 统一以本文件为准，所以订阅服务商怎么改都不会影响本机的监听端口和 TUN 行为。
+# **不要把生成的 config.yaml 提交到 git，它包含你的节点密码。**
 #
 # 文档：https://wiki.metacubex.one/
 
-# 本机代理端口（HTTP + SOCKS5 混合）。TUN 开启时不需要用它，所有流量自动走代理；
-# TUN 关闭时，程序要自己配置 https_proxy=http://127.0.0.1:7890 才会走代理
+# 本机代理端口（HTTP + SOCKS5 混合）。TUN 关闭时，程序要自己配置
+# https_proxy=http://127.0.0.1:7890 才会走代理
 mixed-port: 7890
 allow-lan: false          # 不对局域网开放，只给本机用
 mode: rule
 log-level: info
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
 
-# 本地 API，仅监听本机，没有网页界面；脚本用它切换 TUN（nx proxy tun on|off）。
-# 同机的任何程序都能调用它，如果在意可以取消下一行注释设置密钥
-# （脚本读取不了密钥时，需要改脚本里的 curl 加上 Authorization 头）。
+# 本地 API，仅监听本机，没有网页界面；`nx proxy nodes|use|tun` 通过它工作。
+# 同机的任何程序都能调用它，所以不要对局域网开放
 external-controller: 127.0.0.1:9090
-# secret: "改成一个随机字符串"
 
-# 透明代理（TUN）：默认开启，所以 `nx proxy on` 启动后就是全局代理，所有程序不用任何设置。
-# 代价：更耗电；自动路由配错可能影响局域网和 SSH（下面 rules 里已让局域网网段直连）。
-# 出问题时：`nx proxy tun off` 关掉透明代理，或 `nx proxy off` 停掉整个服务。
+# 记住你用 `nx proxy use` 选的节点，重启后保持（保存在 mihomo 的状态目录里）
+profile:
+  store-selected: true
+
+# 订阅规则里的 GEOIP,CN 需要地理数据库，mihomo 启动时会下载。
+# 默认地址在 GitHub，这台机器访问很慢，所以换成 jsdelivr 镜像（实测可用，约 1MB/s）
+geo-auto-update: false
+geox-url:
+  mmdb: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb"
+  geoip: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  geosite: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  asn: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb"
+
+# 透明代理（TUN）：默认**关闭**。在这台机器上开启后系统 DNS 会失效（原因还在排查），
+# 所以先用普通代理端口。想试的话 `nx proxy tun on`，出问题 `nx proxy tun off` 即可恢复，
+# 试之前请保留一个已登录的 SSH 会话兜底
 tun:
-  enable: true
+  enable: false
   stack: mixed
   auto-route: true
   auto-detect-interface: true
   dns-hijack:
     - any:53
 
+# DNS：参考你在 Mac 上 FlClash 的设置（respect-rules、default-nameserver、proxy-server-nameserver），
+# 这几项在 TUN 下对 DNS 是否正常可能有影响
 dns:
   enable: true
+  ipv6: false
+  respect-rules: true
   enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - dns.msftnsci.com
+    - www.msftnsci.com
+    - www.msftconnecttest.com
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
   nameserver:
     - 223.5.5.5
     - 119.29.29.29
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
 
-# 订阅：mihomo 会自己下载节点并定时更新。把 url 换成你的订阅地址。
-proxy-providers:
-  sub:
-    type: http
-    url: "在这里填订阅地址"
-    interval: 3600
-    path: ./sub.yaml
-    health-check:
-      enable: true
-      url: https://www.gstatic.com/generate_204
-      interval: 300
-
-proxy-groups:
-  - name: PROXY
-    type: select
-    use:
-      - sub
-
-# 规则刻意不用 GEOIP / GEOSITE：它们需要 mihomo 启动时从 GitHub 下载数据库，
-# 而这台机器访问 GitHub 很慢，会卡住启动。这里只用域名和网段规则。
-rules:
-  - DOMAIN-SUFFIX,ustc.edu.cn,DIRECT   # nix 的国内镜像，直连更快
-  - DOMAIN-SUFFIX,cn,DIRECT
-  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
-  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
-  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
-  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
-  - MATCH,PROXY
+# ---- 以下由 nx proxy init/update 从订阅追加：proxies、proxy-groups、rules ----

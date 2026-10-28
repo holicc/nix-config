@@ -182,16 +182,76 @@ cmd_status() {
 PROXY_CONF="${MIHOMO_CONF:-$HOME/.config/mihomo/config.yaml}"
 PROXY_PORT="${MIHOMO_PORT:-7890}"
 PROXY_API="${MIHOMO_API:-127.0.0.1:9090}"
-# 模板里订阅地址的占位符（模板是中文的，这里要和它保持一致，不属于脚本输出）
-PROXY_PLACEHOLDER="在这里填订阅地址"
+# 订阅地址单独存一份，供 `proxy update` 重新下载订阅用（权限 600，和配置文件一样不进 git）
+PROXY_SUB_URL_FILE="${MIHOMO_SUB_URL_FILE:-$(dirname "$PROXY_CONF")/subscription.url}"
+# 订阅服务器常按 User-Agent 决定返回什么格式；clash.meta 通常会拿到 Clash/mihomo 的 YAML
+PROXY_UA="${MIHOMO_UA:-clash.meta}"
 
-# 节点组名（模板 proxy-groups 里的组）。订阅里常混着几条展示用的假节点
-# （官网、续费入口、剩余流量、到期时间），不是真节点，所以在列表里隐藏、也不允许按编号选中
-PROXY_GROUP="${MIHOMO_GROUP:-PROXY}"
+# 订阅里常混着几条展示用的假节点（官网、续费入口、剩余流量、到期时间），不是真节点，
+# 所以在节点列表里隐藏、也不允许按编号选中
 PROXY_INFO_RE='://|剩余|重置|到期|官网|续费|过滤'
 
+# 当前使用的节点组：订阅的节点组名因服务商而异（你的订阅里是 FSCloud）。
+# 默认取规则里最后一条 MATCH 指向的组，也可用环境变量 MIHOMO_GROUP 指定
+proxy_group() {
+  if [ -n "${MIHOMO_GROUP:-}" ]; then printf '%s' "$MIHOMO_GROUP"; return 0; fi
+  [ -f "$PROXY_CONF" ] || return 1
+  grep -E 'MATCH,' "$PROXY_CONF" | tail -1 | sed -E 's/.*MATCH,([^,"]*).*/\1/'
+}
+
+# 把字符串按字节做百分号编码，节点组名含中文或特殊字符时才能放进 URL 路径
+proxy_urlenc() {
+  local LC_ALL=C s="$1" i c out=""
+  for (( i = 0; i < ${#s}; i++ )); do
+    c="${s:i:1}"
+    case "$c" in
+      [a-zA-Z0-9._~-]) out+="$c" ;;
+      *) out+="$(printf '%%%02X' "'$c")" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
 # 通过 mihomo 的本地 API 读取节点组信息；不依赖 jq，用 grep/sed 解析 JSON
-proxy_group_json() { curl -sf -m 8 "http://${PROXY_API}/proxies/${PROXY_GROUP}"; }
+proxy_group_json() { curl -sf -m 8 "http://${PROXY_API}/proxies/$(proxy_urlenc "$(proxy_group)")"; }
+
+# 下载订阅并拼装配置：基础设置（examples/mihomo/config.example.yaml）+ 订阅里的
+# proxies / proxy-groups / rules（以及 providers）。订阅里的端口、DNS、TUN 等其余设置丢弃，
+# 以基础设置为准。订阅地址会被 curl 的错误输出隐藏，不会打印到屏幕。
+# 测试/离线时可以用环境变量 MIHOMO_SUB_FILE 指向一个本地文件，代替下载
+proxy_build_config() {
+  local url="$1" raw out size rc=0
+  raw="$(mktemp)"; out="$(mktemp)"
+  if [ -n "${MIHOMO_SUB_FILE:-}" ]; then
+    cp "$MIHOMO_SUB_FILE" "$raw"
+  else
+    curl -fsSL -m 60 -A "$PROXY_UA" "$url" -o "$raw" 2>/dev/null || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      rm -f "$raw" "$out"
+      die "downloading the subscription failed (curl exit ${rc}); check the URL and your network (is the subscription host reachable without a proxy?)"
+    fi
+  fi
+  size="$(wc -c < "$raw")"
+  if ! grep -q -E '^(proxies|proxy-providers):' "$raw"; then
+    rm -f "$raw" "$out"
+    die "the subscription did not return a Clash/mihomo YAML config (${size} bytes). The server may pick the format by User-Agent; try: MIHOMO_UA=clash-verge $(basename "$0") proxy init"
+  fi
+  cp examples/mihomo/config.example.yaml "$out"
+  awk '
+    /^[A-Za-z0-9_-]+:/ {
+      key = $1; sub(/:.*/, "", key)
+      keep = (key == "proxies" || key == "proxy-groups" || key == "proxy-providers" || key == "rules" || key == "rule-providers")
+    }
+    keep { print }
+  ' "$raw" >> "$out"
+  rm -f "$raw"
+  grep -q -E '^proxy-groups:' "$out" || warn "the subscription has no proxy-groups; nodes cannot be switched with 'proxy use'"
+  grep -q -E '^rules:' "$out" || warn "the subscription has no rules; mihomo will send everything DIRECT"
+  mkdir -p "$(dirname "$PROXY_CONF")"
+  chmod 700 "$(dirname "$PROXY_CONF")"
+  install -m 600 "$out" "$PROXY_CONF"
+  rm -f "$out"
+}
 proxy_now() {
   proxy_group_json | grep -o '"now":"[^"]*"' | sed -e 's/^"now":"//' -e 's/"$//'
 }
@@ -205,35 +265,41 @@ cmd_proxy() {
   shift || true
   case "$sub" in
     init)
-      # 只需要输入订阅地址：配置文件不存在就先从模板复制，然后只替换其中的订阅地址那一行。
+      # 只需要输入订阅地址：下载订阅，取其中的节点、节点组和规则，拼上我们的基础设置，生成配置。
       # 地址用 read -s 读取：输入不回显，也不会进命令历史或进程参数列表
-      if [ ! -e "$PROXY_CONF" ]; then
-        mkdir -p "$(dirname "$PROXY_CONF")"
-        cp examples/mihomo/config.example.yaml "$PROXY_CONF"
-        ok "Created ${PROXY_CONF} from the template"
-      fi
-      local url esc
+      local url
       read -r -s -p "Paste your subscription URL (input is hidden): " url
       echo
       case "$url" in http://*|https://*) ;; *) die "that does not look like an http(s) URL" ;; esac
-      case "$url" in *'"'*|*[[:space:]]*) die "the URL must not contain spaces or double quotes" ;; esac
-      # 转义 sed 替换串里的特殊字符（反斜杠、&、分隔符 |）
-      esc="$(printf '%s' "$url" | sed -e 's/[\\&|]/\\&/g')"
-      sed -i "s|^\(    url: \)\".*\"|\1\"${esc}\"|" "$PROXY_CONF"
-      chmod 600 "$PROXY_CONF"
-      ok "Subscription URL saved to ${PROXY_CONF} (mode 600, never commit it)"
+      case "$url" in *[[:space:]]*) die "the URL must not contain spaces" ;; esac
+      say "Downloading the subscription and building the config"
+      proxy_build_config "$url"
+      mkdir -p "$(dirname "$PROXY_SUB_URL_FILE")"
+      (umask 077; printf '%s\n' "$url" > "$PROXY_SUB_URL_FILE")
+      chmod 600 "$PROXY_SUB_URL_FILE"
+      ok "Config written to ${PROXY_CONF} (mode 600, never commit it)"
+      echo "   Subscription URL kept in ${PROXY_SUB_URL_FILE} (mode 600) for '$(basename "$0") proxy update'"
       say "Next: $(basename "$0") proxy on"
       ;;
-    on)
-      [ -f "$PROXY_CONF" ] || die "no config file; run '$(basename "$0") proxy init' first and fill in your subscription URL"
-      if grep -q "$PROXY_PLACEHOLDER" "$PROXY_CONF"; then
-        die "config still contains the placeholder; put your subscription URL into ${PROXY_CONF}"
+    update)
+      # 重新下载订阅刷新节点和规则（节点会变，订阅是静态拼进配置的，需要手动更新）
+      [ -f "$PROXY_SUB_URL_FILE" ] || die "no saved subscription URL; run '$(basename "$0") proxy init' first"
+      say "Re-downloading the subscription and rebuilding the config"
+      proxy_build_config "$(head -1 "$PROXY_SUB_URL_FILE")"
+      ok "Config updated: ${PROXY_CONF}"
+      if systemctl is-active --quiet mihomo; then
+        warn "mihomo is running with the old config; apply it with: $(basename "$0") proxy off && $(basename "$0") proxy on"
       fi
+      ;;
+    on)
+      [ -f "$PROXY_CONF" ] || die "no config file; run '$(basename "$0") proxy init' first"
+      grep -q -E '^(proxies|proxy-providers):' "$PROXY_CONF" \
+        || die "the config has no proxies; run '$(basename "$0") proxy init' to build it from your subscription"
       sudo systemctl start mihomo
       ok "mihomo started 🚀"
-      echo "   With TUN on (the default in the template) all traffic goes through the proxy; no per-command setup needed."
-      echo "   A local HTTP/SOCKS proxy is also available at http://127.0.0.1:${PROXY_PORT}"
-      echo "   If SSH or the LAN misbehaves: $(basename "$0") proxy tun off   or   $(basename "$0") proxy off"
+      echo "   Local HTTP/SOCKS proxy: http://127.0.0.1:${PROXY_PORT}  (e.g. https_proxy=http://127.0.0.1:${PROXY_PORT} git push)"
+      echo "   TUN (transparent proxy) is off by default; try: $(basename "$0") proxy tun on   (undo: proxy tun off)"
+      echo "   First start downloads geoip.metadb from the mirror; if it does not come up, see: journalctl -u mihomo -b"
       ;;
     off)
       sudo systemctl stop mihomo
@@ -263,7 +329,7 @@ cmd_proxy() {
       systemctl is-active --quiet mihomo || die "mihomo is not running; run '$(basename "$0") proxy on' first"
       local now i=0 n
       now="$(proxy_now || true)"
-      say "Nodes in group ${PROXY_GROUP} (info-only entries from the subscription are hidden)"
+      say "Members of group $(proxy_group) (info-only entries from the subscription are hidden)"
       while IFS= read -r n; do
         i=$((i + 1))
         if [ "$n" = "$now" ]; then
@@ -287,12 +353,12 @@ cmd_proxy() {
         name="$want"
       fi
       case "$name" in *'"'*|*'\'*) die "node name must not contain double quotes or backslashes" ;; esac
-      curl -sf -m 8 -X PUT "http://${PROXY_API}/proxies/${PROXY_GROUP}" -H 'Content-Type: application/json' \
+      curl -sf -m 8 -X PUT "http://${PROXY_API}/proxies/$(proxy_urlenc "$(proxy_group)")" -H 'Content-Type: application/json' \
         -d "{\"name\":\"${name}\"}" >/dev/null \
         || die "switching failed; check the exact name with: $(basename "$0") proxy nodes"
-      ok "Switched ${PROXY_GROUP} to: ${name}"
+      ok "Switched $(proxy_group) to: ${name}"
       ;;
-    *) die "unknown proxy subcommand: ${sub} (init|on|off|status|tun|nodes|use)" ;;
+    *) die "unknown proxy subcommand: ${sub} (init|update|on|off|status|tun|nodes|use)" ;;
   esac
 }
 
@@ -311,7 +377,8 @@ Usage: $(basename "$0") <command>
   gc        Remove generations older than 7 days (sudo)
   status    Kernel, generation, local inputs, repo state, key services
   proxy     Proxy (mihomo / Clash core), subcommands:
-              init          paste your subscription URL (hidden input); creates ~/.config/mihomo/config.yaml from the template
+              init          paste your subscription URL (hidden input); downloads it and builds ~/.config/mihomo/config.yaml
+              update        re-download the saved subscription to refresh nodes and rules
               on | off      start / stop the service (sudo; not started at boot, saves power)
               status        service state and whether TUN is on
               tun on|off    toggle transparent proxy (TUN) at runtime, no rebuild needed

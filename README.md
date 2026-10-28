@@ -55,13 +55,15 @@ nx help      # 全部命令
 这台机器访问 GitHub 很慢，装了 mihomo（Clash 内核）作为**按需启动**的代理服务，主要给 nix 和 git 用：
 
 ```bash
-nx proxy init      # 按提示粘贴订阅地址（输入不显示），其余配置用模板
-nx proxy on        # 启动，默认就是全局代理（TUN），不用给命令单独设置
+nx proxy init      # 按提示粘贴订阅地址（输入不显示），脚本下载订阅并生成配置
+nx proxy on        # 启动，本机代理端口 127.0.0.1:7890
+nx proxy nodes     # 查看节点；nx proxy use <编号> 切换
+nx proxy update    # 订阅节点变了，重新下载
 nx proxy off       # 停止（不用时不占电，服务不随开机启动）
 ```
 
-- 订阅地址保存在 `~/.config/mihomo/config.yaml`，**在仓库外，绝不要提交**；仓库里只有不含订阅的模板 `examples/mihomo/config.example.yaml`。
-- 模板默认开启透明代理（TUN），所以启动后所有程序自动走代理；想临时关掉用 `nx proxy tun off`，不需要重新构建。TUN 更耗电，而且自动路由配错可能影响局域网和 SSH，**第一次开启时请保留一个已登录的 SSH 会话兜底**。
+- 配置 = 基础设置（`examples/mihomo/config.example.yaml`）+ 订阅自带的节点、节点组和规则。生成的 `~/.config/mihomo/config.yaml` 和订阅地址文件**在仓库外，绝不要提交**。
+- 透明代理（TUN）默认**关闭**：在这台机器上开启后系统 DNS 会失效，原因还在排查。普通代理端口 7890 可用，程序要设置 `https_proxy=http://127.0.0.1:7890`。想试 TUN 用 `nx proxy tun on`，**试之前请保留一个已登录的 SSH 会话兜底**，出问题 `nx proxy tun off`。
 - 没有安装 webui，管理都通过 `nx proxy`。详见 `scripts/README.md`。
 
 ## 软件与服务
