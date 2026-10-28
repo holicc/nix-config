@@ -44,7 +44,7 @@ nx help      # 全部命令
 | **正式模式** | `flake.lock` 里有 `noctalia`（说明已用 `nx update` 生成过真正的锁） | 三个 input 固定到 GitHub 上的具体版本，不需要任何覆盖参数，也不需要本地源码副本 |
 | **过渡模式** | 锁还是模板自带的旧锁（没有 `noctalia`） | 这台机器直连 GitHub 很慢，所以用 `~/nix-inputs/` 里预先下载的源码副本做 `--override-input`，避免现下载 |
 
-**升级软件版本**：先 `nx proxy on`（GitHub 太慢，必须走代理），然后：
+**升级软件版本**（GitHub 直连很慢，建议先 `nx proxy on`，并给命令带上 `https_proxy=http://127.0.0.1:7890`；`nx update` 本身不碰代理）：
 
 ```bash
 nx update          # 更新全部 input，写入 flake.lock；nx update nixpkgs 只更新 nixpkgs

@@ -6,7 +6,7 @@
 #     nixpkgs / home-manager / noctalia 由锁固定到 GitHub 上的具体版本，不需要任何覆盖参数。
 #   - 过渡模式：锁还是模板自带的旧锁（没有 noctalia）。这台机器直连 GitHub 很慢，
 #     所以用 ~/nix-inputs/ 里预先下载的本地源码副本做 --override-input，避免现下载。
-#     跑一次 `nx update`（需要先 `nx proxy on`）就会切换到正式模式。
+#     跑一次 `nx update` 就会切换到正式模式。
 #
 # 用法：nx <命令>（home/default.nix 装的包装命令）或 ./scripts/nixos.sh <命令>；
 #       不带参数或 help 查看全部命令。
@@ -145,13 +145,11 @@ rebuild() {
 # 只改 flake.lock，不构建、不切换：之后 `nx diff` 预览软件包变化，满意再 `nx switch`，
 # 不满意可以 `git checkout flake.lock` 退回上一个版本（这是有锁文件的好处）
 cmd_update() {
-  systemctl is-active --quiet mihomo \
-    || die "mihomo is not running; GitHub is too slow without the proxy. Run: $(basename "$0") proxy on"
   stage
-  local before after proxy="http://127.0.0.1:${PROXY_PORT}"
+  local before after
   before="$(sha256sum flake.lock 2>/dev/null | cut -d' ' -f1 || true)"
-  say "Updating flake inputs through the proxy (nixpkgs is ~45 MB; this can take several minutes)"
-  https_proxy="$proxy" http_proxy="$proxy" HTTPS_PROXY="$proxy" HTTP_PROXY="$proxy" nix flake update "$@"
+  say "Updating flake inputs (nixpkgs is ~45 MB; this can take several minutes)"
+  nix flake update "$@"
   after="$(sha256sum flake.lock | cut -d' ' -f1)"
   if [ "$before" = "$after" ]; then
     ok "flake.lock is already up to date"
@@ -472,7 +470,7 @@ Usage: $(basename "$0") <command>
   test      Check, then activate now without a boot entry; reverts on reboot (sudo)
   boot      Check, then use on next boot without activating now (sudo)
   switch    Check, build and activate now; also used on next boot (sudo)
-  update    Update flake inputs (nixpkgs, home-manager, noctalia) into flake.lock; needs the proxy: proxy on
+  update    Update flake inputs (nixpkgs, home-manager, noctalia) into flake.lock
             "update nixpkgs" updates only that input. Does not build or switch; preview with: diff
   gens      List all system generations (rollback targets)
   pkgs      List installed packages and fonts
