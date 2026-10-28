@@ -242,7 +242,7 @@ PROXY_INFO_RE='://|剩余|重置|到期|官网|续费|过滤'
 proxy_group() {
   if [ -n "${MIHOMO_GROUP:-}" ]; then printf '%s' "$MIHOMO_GROUP"; return 0; fi
   [ -f "$PROXY_CONF" ] || return 1
-  grep -E 'MATCH,' "$PROXY_CONF" | tail -1 | sed -E 's/.*MATCH,([^,"]*).*/\1/'
+  grep -E 'MATCH,' "$PROXY_CONF" | tail -1 | sed -E 's/.*MATCH,([^,"'"'"']*).*/\1/'
 }
 
 # 把字符串按字节做百分号编码，节点组名含中文或特殊字符时才能放进 URL 路径
