@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# NixOS 配置维护脚本：把常用命令和"本地 input 覆盖参数"封装起来，不用每次敲一长串。
+# NixOS 配置维护脚本：把常用命令封装起来，不用每次敲一长串。
 #
-# 为什么需要 --override-input：
-#   这台机器访问 GitHub 很慢，nixpkgs 和 noctalia 的源码是预先下载到 ~/nix-inputs/ 的本地副本，
-#   构建时用 --override-input 指向它们，避免联网下载。flake.lock 里没有记录这两个本地路径，
-#   所以每条 nix / nixos-rebuild 命令都要带上这些参数，本脚本会自动带上。
+# 关于 input 的两种模式（脚本按 flake.lock 的内容自动判断，不需要手动切换）：
+#   - 正式模式：flake.lock 里有 noctalia，说明已经用 `nx update` 生成过真正的锁，
+#     nixpkgs / home-manager / noctalia 由锁固定到 GitHub 上的具体版本，不需要任何覆盖参数。
+#   - 过渡模式：锁还是模板自带的旧锁（没有 noctalia）。这台机器直连 GitHub 很慢，
+#     所以用 ~/nix-inputs/ 里预先下载的本地源码副本做 --override-input，避免现下载。
+#     跑一次 `nx update`（需要先 `nx proxy on`）就会切换到正式模式。
 #
 # 用法：nx <命令>（home/default.nix 装的包装命令）或 ./scripts/nixos.sh <命令>；
 #       不带参数或 help 查看全部命令。
@@ -22,12 +24,19 @@ INPUTS_DIR="${NIX_INPUTS_DIR:-$HOME/nix-inputs}" # 本地 input 副本所在目�
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
-# 所有 nix 命令共用的覆盖参数
-OVERRIDES=(
-  --override-input nixpkgs "path:${INPUTS_DIR}/nixpkgs"
-  --override-input noctalia "git+file://${INPUTS_DIR}/noctalia"
-  --no-write-lock-file
-)
+# 所有 nix 命令共用的覆盖参数。判断标准：flake.lock 里有没有 noctalia
+# （模板自带的旧锁没有它）。有 = 已经是 `nx update` 生成的正式锁，不需要覆盖
+if grep -q '"noctalia"' flake.lock 2>/dev/null; then
+  LOCAL_INPUTS=0
+  OVERRIDES=()
+else
+  LOCAL_INPUTS=1
+  OVERRIDES=(
+    --override-input nixpkgs "path:${INPUTS_DIR}/nixpkgs"
+    --override-input noctalia "git+file://${INPUTS_DIR}/noctalia"
+    --no-write-lock-file
+  )
+fi
 
 TOPLEVEL=".#nixosConfigurations.${HOST}.config.system.build.toplevel"
 
@@ -48,8 +57,10 @@ lock_filter() {
   '
 }
 
-# 本地 input 副本必须存在，否则给出明确提示而不是让 nix 报一堆难懂的错
+# 过渡模式下，本地 input 副本必须存在，否则给出明确提示而不是让 nix 报一堆难懂的错；
+# 正式模式（flake.lock 已固定版本）不需要本地副本
 need_inputs() {
+  [ "$LOCAL_INPUTS" = 1 ] || return 0
   [ -d "${INPUTS_DIR}/nixpkgs" ] || die "cannot find ${INPUTS_DIR}/nixpkgs (local nixpkgs source copy)"
   [ -d "${INPUTS_DIR}/noctalia/.git" ] \
     || die "cannot find ${INPUTS_DIR}/noctalia, or it is not a git repository (Noctalia's flake needs a git revision)"
@@ -127,6 +138,34 @@ rebuild() {
   fi
 }
 
+# 升级 flake 的 input（nixpkgs / home-manager / noctalia）并写入 flake.lock。
+# 需要访问 GitHub，这台机器上必须经过代理，所以要求 mihomo 在运行（nx proxy on）；
+# 下载会走本机代理端口 7890，不管 TUN 开没开都行。
+# 用法：nx update [input...]，不带参数更新全部，如 `nx update nixpkgs` 只更新 nixpkgs。
+# 只改 flake.lock，不构建、不切换：之后 `nx diff` 预览软件包变化，满意再 `nx switch`，
+# 不满意可以 `git checkout flake.lock` 退回上一个版本（这是有锁文件的好处）
+cmd_update() {
+  systemctl is-active --quiet mihomo \
+    || die "mihomo is not running; GitHub is too slow without the proxy. Run: $(basename "$0") proxy on"
+  stage
+  local before after proxy="http://127.0.0.1:${PROXY_PORT}"
+  before="$(sha256sum flake.lock 2>/dev/null | cut -d' ' -f1 || true)"
+  say "Updating flake inputs through the proxy (nixpkgs is ~45 MB; this can take several minutes)"
+  https_proxy="$proxy" http_proxy="$proxy" HTTPS_PROXY="$proxy" HTTP_PROXY="$proxy" nix flake update "$@"
+  after="$(sha256sum flake.lock | cut -d' ' -f1)"
+  if [ "$before" = "$after" ]; then
+    ok "flake.lock is already up to date"
+  else
+    ok "flake.lock updated"
+    if [ "$LOCAL_INPUTS" = 1 ]; then
+      echo "   First real lock generated: from now on nx pins nixpkgs/home-manager/noctalia from GitHub"
+      echo "   and no longer uses the local copies in ${INPUTS_DIR} (you can delete them later)."
+    fi
+    echo "   Review:  git diff flake.lock"
+    echo "   Preview: $(basename "$0") diff      Apply: $(basename "$0") switch      Undo: git checkout flake.lock"
+  fi
+}
+
 cmd_gens() { nixos-rebuild list-generations; }
 
 # 已安装软件：系统级、用户级，字体
@@ -154,12 +193,17 @@ cmd_status() {
   echo "   kernel: $(uname -r)"
   echo "   system: $(readlink /run/current-system)"
 
-  say "Local inputs"
-  for d in nixpkgs noctalia; do
-    if [ -d "${INPUTS_DIR}/${d}" ]; then echo "   ✅ ${d}"; else echo "   ❌ ${d} (missing!)"; fi
-  done
-  if [ -d "${INPUTS_DIR}/noctalia/.git" ]; then
-    echo "   noctalia commit: $(git -C "${INPUTS_DIR}/noctalia" log --oneline -1)"
+  if [ "$LOCAL_INPUTS" = 1 ]; then
+    say "Inputs: local source copies (flake.lock is not pinned yet; run: $(basename "$0") update)"
+    for d in nixpkgs noctalia; do
+      if [ -d "${INPUTS_DIR}/${d}" ]; then echo "   ✅ ${d}"; else echo "   ❌ ${d} (missing!)"; fi
+    done
+    if [ -d "${INPUTS_DIR}/noctalia/.git" ]; then
+      echo "   noctalia commit: $(git -C "${INPUTS_DIR}/noctalia" log --oneline -1)"
+    fi
+  else
+    say "Inputs: pinned by flake.lock (GitHub)"
+    echo "   flake.lock last changed: $(stat -c %y flake.lock | cut -d. -f1)"
   fi
 
   say "Repository"
@@ -428,6 +472,8 @@ Usage: $(basename "$0") <command>
   test      Check, then activate now without a boot entry; reverts on reboot (sudo)
   boot      Check, then use on next boot without activating now (sudo)
   switch    Check, build and activate now; also used on next boot (sudo)
+  update    Update flake inputs (nixpkgs, home-manager, noctalia) into flake.lock; needs the proxy: proxy on
+            "update nixpkgs" updates only that input. Does not build or switch; preview with: diff
   gens      List all system generations (rollback targets)
   pkgs      List installed packages and fonts
   gc        Remove generations older than 7 days (sudo)
@@ -453,6 +499,7 @@ case "${1:-help}" in
   test)   rebuild test ;;
   boot)   rebuild boot ;;
   switch) rebuild switch ;;
+  update) shift; cmd_update "$@" ;;
   gens)   cmd_gens ;;
   pkgs)   cmd_pkgs ;;
   gc)     cmd_gc ;;

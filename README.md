@@ -20,7 +20,7 @@ nixos-config/
 
 ## 日常使用
 
-所有操作都通过脚本，它会自动带上本地 input 覆盖参数，并在构建前 `git add -A`。
+所有操作都通过脚本，它会自动处理 input 的来源（见下面"软件版本和 flake.lock"），并在构建前 `git add -A`。
 脚本通过 home-manager 装成了 `nx` 命令（见 `home/default.nix`），**在任何目录都能直接用**；
 也可以在仓库里用 `./scripts/nixos.sh` 代替 `nx`，两者完全等价：
 
@@ -35,20 +35,31 @@ nx help      # 全部命令
 
 建议的流程：改配置，`check`，`diff`，确认无误后 `switch`，最后 `git commit`。
 
-## 为什么要本地 input（重要）
+## 软件版本和 flake.lock（重要）
 
-这台机器访问 GitHub 很慢，所以 `nixpkgs` 和 `noctalia` 的源码预先下载到 `~/nix-inputs/`：
+`nixpkgs`、`home-manager`、`noctalia` 这三个 input 的版本由 `flake.lock` 固定。脚本按锁的内容自动判断处于哪种模式：
 
+| 模式 | 判断依据 | 行为 |
+|---|---|---|
+| **正式模式** | `flake.lock` 里有 `noctalia`（说明已用 `nx update` 生成过真正的锁） | 三个 input 固定到 GitHub 上的具体版本，不需要任何覆盖参数，也不需要本地源码副本 |
+| **过渡模式** | 锁还是模板自带的旧锁（没有 `noctalia`） | 这台机器直连 GitHub 很慢，所以用 `~/nix-inputs/` 里预先下载的源码副本做 `--override-input`，避免现下载 |
+
+**升级软件版本**：先 `nx proxy on`（GitHub 太慢，必须走代理），然后：
+
+```bash
+nx update          # 更新全部 input，写入 flake.lock；nx update nixpkgs 只更新 nixpkgs
+nx diff            # 预览软件包会怎么变
+nx switch          # 满意再切换
 ```
-~/nix-inputs/nixpkgs     nixpkgs 源码快照
-~/nix-inputs/noctalia    Noctalia v5 源码（是一个 git 仓库，因为它的 flake 需要 git 版本号）
-```
 
-构建时用 `--override-input` 指向它们，`flake.lock` 里没有记录这两个本地路径。因此：
+`nx update` 只改 `flake.lock`，不构建、不切换。不满意可以 `git checkout flake.lock` 退回上一个版本。**第一次跑 `nx update` 会生成正式的锁，之后就自动进入正式模式**，`~/nix-inputs/` 不再被使用，可以删除。
 
+**过渡模式下的注意事项**：
 - **不要删除 `~/nix-inputs/`**，否则下一次构建会失败，或回退去 GitHub 下载并可能版本不匹配。
-- **直接敲 `nix flake show`、`nixos-rebuild` 等命令会联网下载**，请用 `./scripts/nixos.sh`，或手动带上脚本里的 `OVERRIDES` 参数。
+- **直接敲 `nix flake show`、`nixos-rebuild` 等命令会联网下载**，请用 `./scripts/nixos.sh`。
 - 当前系统和旧版本不依赖这些目录（源码已复制进 `/nix/store`），只是影响"再次构建"。
+
+**没有锁文件时的退路**：如果 `nx update` 之后新版本有问题，除了 `git checkout flake.lock`，也可以在开机菜单里选上一个系统版本回滚。
 
 ## 代理（访问 GitHub 慢）
 

@@ -2,7 +2,7 @@
 
 ## nixos.sh
 
-维护脚本，封装了常用命令和**本地 input 覆盖参数**（原因见根目录 `README.md` 的"为什么要本地 input"）。
+维护脚本，封装了常用命令，并自动处理 input 的来源：`flake.lock` 里有 `noctalia`（已用 `nx update` 生成过正式的锁）就用锁固定的 GitHub 版本，否则用 `~/nix-inputs/` 的本地源码副本做覆盖（原因和切换方式见根目录 `README.md` 的"软件版本和 flake.lock"）。
 
 ```bash
 nx <命令>                    # 推荐：在任何目录都能用（home/default.nix 里装的包装命令）
@@ -20,6 +20,7 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 | `test` | 校验后立即切换，但不写入开机项，重启后回到旧配置 | 是 |
 | `boot` | 校验后设为下次开机使用，不立即切换 | 是 |
 | `switch` | 校验后构建并立即切换，下次开机也用它 | 是 |
+| `update [input...]` | 更新 flake 的 input（nixpkgs、home-manager、noctalia）并写入 `flake.lock`；不带参数更新全部，`update nixpkgs` 只更新它。**需要代理**（先 `proxy on`），下载走本机 7890 端口。只改锁文件，不构建、不切换；之后 `diff` 预览、`switch` 应用，不满意 `git checkout flake.lock` 退回。第一次运行会从过渡模式切换到正式模式 | 否 |
 | `gens` | 列出所有系统版本（可回滚） | 否 |
 | `pkgs` | 列出已安装的软件包和字体 | 否 |
 | `gc` | 清理 7 天前的旧版本，之后无法回滚到更早的版本 | 是 |
@@ -60,6 +61,6 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 ## 行为说明
 
 - 每个命令执行前都会 `git add -A`，因为 flake 只认 git 已 track 的文件。
-- 执行前会检查 `~/nix-inputs/nixpkgs` 和 `~/nix-inputs/noctalia`（需是 git 仓库）是否存在，缺失时给出明确提示。
+- 过渡模式下，执行前会检查 `~/nix-inputs/nixpkgs` 和 `~/nix-inputs/noctalia`（需是 git 仓库）是否存在，缺失时给出明确提示；正式模式下不需要它们。
 - `test`、`boot`、`switch` 会先跑一遍 `check`，校验失败就不会去切换系统。
 - 脚本**不会代输 sudo 密码**，需要时会提示你自己输入。
