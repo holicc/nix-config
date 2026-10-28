@@ -5,8 +5,12 @@
 维护脚本，封装了常用命令和**本地 input 覆盖参数**（原因见根目录 `README.md` 的"为什么要本地 input"）。
 
 ```bash
-./scripts/nixos.sh <命令>
+nx <命令>                    # 推荐：在任何目录都能用（home/default.nix 里装的包装命令）
+./scripts/nixos.sh <命令>    # 等价，在仓库目录里直接运行
 ```
+
+`nx` 只是转调 `~/nixos-config/scripts/nixos.sh`，所以修改脚本后立即生效，不需要重新 switch。
+仓库如果不在 `~/nixos-config`，要同步修改 `home/default.nix` 里 `nx` 的路径。下文的命令都可以把 `./scripts/nixos.sh` 换成 `nx`。
 
 | 命令 | 作用 | 需要 sudo |
 |---|---|---|

@@ -4,7 +4,7 @@
 
 | 路径 | 作用 |
 |---|---|
-| `default.nix` | 用户名、家目录、`home.stateVersion`，并 import 下面两个子目录 |
+| `default.nix` | 用户名、家目录、`home.stateVersion`，import 下面两个子目录，并安装 `nx` 命令（转调 `scripts/nixos.sh` 的包装） |
 | `niri/` | 窗口管理器 Niri 的配置 |
 | `noctalia/default.nix` | 桌面 Shell Noctalia v5 的全部设置 |
 

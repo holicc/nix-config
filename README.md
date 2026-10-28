@@ -20,14 +20,18 @@ nixos-config/
 
 ## 日常使用
 
-所有操作都通过脚本，它会自动带上本地 input 覆盖参数，并在构建前 `git add -A`：
+所有操作都通过脚本，它会自动带上本地 input 覆盖参数，并在构建前 `git add -A`。
+脚本通过 home-manager 装成了 `nx` 命令（见 `home/default.nix`），**在任何目录都能直接用**；
+也可以在仓库里用 `./scripts/nixos.sh` 代替 `nx`，两者完全等价：
 
 ```bash
-./scripts/nixos.sh check     # 只校验，不构建（改完配置先跑这个）
-./scripts/nixos.sh diff      # 构建并对比软件包差异，无输出 = 包没变
-./scripts/nixos.sh switch    # 校验后切换系统（需要 sudo 密码）
-./scripts/nixos.sh help      # 全部命令
+nx check     # 只校验，不构建（改完配置先跑这个）
+nx diff      # 构建并对比软件包差异，无输出 = 包没变
+nx switch    # 校验后切换系统（需要 sudo 密码）
+nx help      # 全部命令
 ```
+
+首次装上 `nx` 之前（还没 switch 过），请先用 `./scripts/nixos.sh switch`。
 
 建议的流程：改配置，`check`，`diff`，确认无误后 `switch`，最后 `git commit`。
 
@@ -51,10 +55,10 @@ nixos-config/
 这台机器访问 GitHub 很慢，装了 mihomo（Clash 内核）作为**按需启动**的代理服务，主要给 nix 和 git 用：
 
 ```bash
-./scripts/nixos.sh proxy init      # 生成配置副本，然后编辑它，填入你的订阅地址
-./scripts/nixos.sh proxy on        # 启动
-./scripts/nixos.sh proxy run git push    # 让某条命令走代理
-./scripts/nixos.sh proxy off       # 停止（不用时不占电）
+nx proxy init      # 生成配置副本，然后编辑它，填入你的订阅地址
+nx proxy on        # 启动
+nx proxy run git push    # 让某条命令走代理
+nx proxy off       # 停止（不用时不占电）
 ```
 
 - 订阅地址在 `~/.config/mihomo/config.yaml`，**在仓库外，绝不要提交**；仓库里只有不含订阅的模板 `examples/mihomo/config.example.yaml`。
