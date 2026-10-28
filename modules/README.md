@@ -8,7 +8,7 @@
 | `nixos/power.nix` | TLP、关闭 power-profiles-daemon、UPower | TLP 开箱即用的省电策略；两个电源守护进程互斥；UPower 给桌面提供电池电量 |
 | `nixos/niri.nix` | Niri、greetd + tuigreet、alacritty、grim、slurp | Wayland 原生、占用小；tuigreet 是文本登录界面，不依赖 GTK/Qt，更省电 |
 | `nixos/fonts.nix` | CaskaydiaCove Nerd Font、Noto CJK 中文 | Nerd Font 提供图标字形；Nerd Fonts 不含中文，所以补装 Noto |
-| `nixos/mihomo.nix` | mihomo 代理服务（Clash 内核）：不随开机启动、授予 TUN 权限、配置文件放仓库外 | 访问 GitHub 慢，nix 和 git 需要代理；按需启动不占电；订阅地址是敏感信息，不进仓库；不装 webui，用脚本切换 TUN |
+| `nixos/mihomo.nix` | mihomo 代理服务（Clash 内核）：不随开机启动、授予 TUN 权限、配置文件放仓库外；并把防火墙的反向路径过滤放宽为 `loose`（推断是 TUN 开启后系统 DNS 失效的原因，待 `nx proxy tun on` 验证） | 访问 GitHub 慢，nix 和 git 需要代理；按需启动不占电；订阅地址是敏感信息，不进仓库；不装 webui，用脚本切换 TUN |
 
 ## 新增模块的步骤
 

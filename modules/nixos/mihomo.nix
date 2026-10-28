@@ -18,6 +18,16 @@
     tunMode = true;
   };
 
+  # 放宽防火墙的反向路径过滤，修复开启 TUN 后系统 DNS 全部失效的问题。
+  # 原因（根据设置和现象推断，没有看到防火墙规则本身）：NixOS 默认 checkReversePath = true（严格），
+  # 会丢弃"从某个网卡进来、但按路由回复本该从另一个网卡出去"的包。TUN 开启后，DNS 应答和网页回包
+  # 都从虚拟网卡 Meta 回来，来源地址（如路由器）按路由却应走 Wi-Fi 网卡，于是被丢弃。
+  # "loose" 只要求回复能从任意网卡出去，是 NixOS 上 Tailscale/WireGuard/Clash 类 TUN 工具的常规做法。
+  # 代价：放宽了一项反 IP 欺骗检查，对笔记本日常使用影响很小。
+  # 排查方向：开启 TUN 后 `getent hosts github.com` 仍无应答，说明原因不只是它，
+  # 再查 mihomo 的 dns-hijack 和 `ip rule`
+  networking.firewall.checkReversePath = "loose";
+
   # 不随开机启动：续航优先，不用代理时完全不占资源。
   # 需要时 `nx proxy on`，用完 `proxy off`
   systemd.services.mihomo.wantedBy = lib.mkForce [ ];
