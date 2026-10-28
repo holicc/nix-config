@@ -35,19 +35,24 @@ geox-url:
   geosite: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
   asn: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb"
 
-# 透明代理（TUN）：默认**关闭**。在这台机器上开启后系统 DNS 会失效（原因还在排查），
-# 所以先用普通代理端口。想试的话 `nx proxy tun on`，出问题 `nx proxy tun off` 即可恢复，
-# 试之前请保留一个已登录的 SSH 会话兜底
+# 透明代理（TUN）：默认关闭（更省电）；需要全局代理时 `nx proxy tun on`，用完 `nx proxy tun off`。
+# 在这台机器上排查出两个问题，都已处理：
+#   1. DNS 失效：NixOS 防火墙的严格反向路径过滤丢掉 TUN 回包，
+#      已在 modules/nixos/mihomo.nix 里设 networking.firewall.checkReversePath = "loose"
+#   2. DNS 好了但 HTTPS 连不上：默认的 mixed 栈 TCP 通道不通，换成 gvisor 栈后正常
+#      （实测：国内镜像直连 0.5 秒，GitHub 走代理约 80KB/s）。
+#      gvisor 是用户态网络栈，CPU 占用比 system/mixed 略高，所以 TUN 只在需要时开
+# 第一次开启时请保留一个已登录的 SSH 会话兜底，出问题 `nx proxy tun off`
 tun:
   enable: false
-  stack: mixed
+  stack: gvisor
   auto-route: true
   auto-detect-interface: true
   dns-hijack:
     - any:53
 
-# DNS：参考你在 Mac 上 FlClash 的设置（respect-rules、default-nameserver、proxy-server-nameserver），
-# 这几项在 TUN 下对 DNS 是否正常可能有影响
+# DNS：参考 Mac 上 FlClash 的设置（respect-rules、default-nameserver、proxy-server-nameserver）。
+# 开启 TUN 后，系统的 DNS 查询会被 mihomo 接管，返回 198.18.x.x 的 fake-ip，再按域名走规则
 dns:
   enable: true
   ipv6: false

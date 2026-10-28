@@ -41,7 +41,7 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 
 **配置是怎么来的：** 最终配置 = 基础设置（`examples/mihomo/config.example.yaml`，端口、DNS、TUN、API 都以它为准）+ 订阅里的 `proxies` / `proxy-groups` / `rules`。订阅里的其余设置会被丢弃，所以服务商改了端口或 DNS 不会影响本机。节点组名因服务商而异，脚本自动取规则里最后一条 `MATCH` 指向的组（你的订阅里是 `FSCloud`），也可用环境变量 `MIHOMO_GROUP` 指定。
 
-**TUN（透明代理）默认关闭**：在这台机器上开启后系统 DNS 会失效，原因还在排查。可以用 `nx proxy tun on` 试，试之前请保留一个已登录的 SSH 会话，出问题 `nx proxy tun off` 即可恢复。
+**TUN（透明代理）默认关闭**，需要时 `nx proxy tun on`，出问题 `nx proxy tun off` 即可恢复。在这台机器上它依赖两处设置，缺一不可：防火墙的 `checkReversePath = "loose"`（`modules/nixos/mihomo.nix`，否则系统 DNS 失效）和基础设置里的 `stack: gvisor`（否则 TCP 连不上）。**基础设置只在 `proxy init` / `proxy update` 重新生成配置时才会更新**，已有的旧配置要重新生成后 `gvisor` 才生效。第一次开启时请保留一个已登录的 SSH 会话。
 
 **订阅地址和生成的配置都不要提交到 git**：它们在仓库外（`~/.config/mihomo/`），仓库里只有不含订阅的基础设置。
 
