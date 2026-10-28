@@ -28,6 +28,8 @@ nx <命令>                    # 推荐：在任何目录都能用（home/defaul
 | `proxy on` / `proxy off` | 启动 / 停止 mihomo 服务（默认不随开机启动） | 是 |
 | `proxy status` | 服务状态，以及 TUN 是否开启 | 否 |
 | `proxy tun on\|off` | 运行时切换透明代理（TUN），不需要重新构建 | 否 |
+| `proxy nodes` | 列出 `PROXY` 节点组的节点，当前使用的打 ✅；订阅里混着的"官网、续费入口、剩余流量、到期时间"这类信息条目不是真节点，会被隐藏 | 否 |
+| `proxy use <编号或名称>` | 切换节点：编号取自 `proxy nodes` 的列表，或写节点完整名称；只改 mihomo 运行时选择，重启后可能恢复 | 否 |
 
 ## 代理（mihomo）使用流程
 

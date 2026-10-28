@@ -185,6 +185,21 @@ PROXY_API="${MIHOMO_API:-127.0.0.1:9090}"
 # 模板里订阅地址的占位符（模板是中文的，这里要和它保持一致，不属于脚本输出）
 PROXY_PLACEHOLDER="在这里填订阅地址"
 
+# 节点组名（模板 proxy-groups 里的组）。订阅里常混着几条展示用的假节点
+# （官网、续费入口、剩余流量、到期时间），不是真节点，所以在列表里隐藏、也不允许按编号选中
+PROXY_GROUP="${MIHOMO_GROUP:-PROXY}"
+PROXY_INFO_RE='://|剩余|重置|到期|官网|续费|过滤'
+
+# 通过 mihomo 的本地 API 读取节点组信息；不依赖 jq，用 grep/sed 解析 JSON
+proxy_group_json() { curl -sf -m 8 "http://${PROXY_API}/proxies/${PROXY_GROUP}"; }
+proxy_now() {
+  proxy_group_json | grep -o '"now":"[^"]*"' | sed -e 's/^"now":"//' -e 's/"$//'
+}
+proxy_nodes() {
+  proxy_group_json | grep -o '"all":\[[^]]*\]' \
+    | sed -e 's/^"all":\["//' -e 's/"\]$//' -e 's/","/\n/g' | grep -v -E "$PROXY_INFO_RE"
+}
+
 cmd_proxy() {
   local sub="${1:-status}"
   shift || true
@@ -227,6 +242,7 @@ cmd_proxy() {
     status)
       if systemctl is-active --quiet mihomo; then
         ok "mihomo service: active"
+        echo "   node: $(proxy_now || echo unknown)"
         printf '   TUN: '
         curl -s "http://${PROXY_API}/configs" | grep -o '"tun":{"enable":[a-z]*' | grep -o '[a-z]*$' || echo "could not read"
       else
@@ -242,7 +258,41 @@ cmd_proxy() {
         -d "{\"tun\":{\"enable\":${state}}}" || die "switching failed; is mihomo running? (proxy on)"
       ok "TUN set to ${state}"
       ;;
-    *) die "unknown proxy subcommand: ${sub} (init|on|off|status|tun)" ;;
+    nodes)
+      # 列出节点，当前使用的打 ✅；编号可直接给 `proxy use`
+      systemctl is-active --quiet mihomo || die "mihomo is not running; run '$(basename "$0") proxy on' first"
+      local now i=0 n
+      now="$(proxy_now || true)"
+      say "Nodes in group ${PROXY_GROUP} (info-only entries from the subscription are hidden)"
+      while IFS= read -r n; do
+        i=$((i + 1))
+        if [ "$n" = "$now" ]; then
+          printf '   ✅ %3d  %s  (current)\n' "$i" "$n"
+        else
+          printf '      %3d  %s\n' "$i" "$n"
+        fi
+      done < <(proxy_nodes || true)
+      [ "$i" -gt 0 ] || warn "no nodes found (subscription not loaded yet? check: journalctl -u mihomo -b)"
+      echo "   Switch with: $(basename "$0") proxy use <number|name>"
+      ;;
+    use)
+      # 切换节点：参数是 nodes 列表里的编号，或节点的完整名称。只改 mihomo 运行时选择，重启后可能恢复
+      local want="${1:-}" name=""
+      [ -n "$want" ] || die "usage: $(basename "$0") proxy use <number|name>"
+      systemctl is-active --quiet mihomo || die "mihomo is not running; run '$(basename "$0") proxy on' first"
+      if [[ "$want" =~ ^[0-9]+$ ]]; then
+        name="$(proxy_nodes | sed -n "${want}p" || true)"
+        [ -n "$name" ] || die "no node with number ${want}; run: $(basename "$0") proxy nodes"
+      else
+        name="$want"
+      fi
+      case "$name" in *'"'*|*'\'*) die "node name must not contain double quotes or backslashes" ;; esac
+      curl -sf -m 8 -X PUT "http://${PROXY_API}/proxies/${PROXY_GROUP}" -H 'Content-Type: application/json' \
+        -d "{\"name\":\"${name}\"}" >/dev/null \
+        || die "switching failed; check the exact name with: $(basename "$0") proxy nodes"
+      ok "Switched ${PROXY_GROUP} to: ${name}"
+      ;;
+    *) die "unknown proxy subcommand: ${sub} (init|on|off|status|tun|nodes|use)" ;;
   esac
 }
 
@@ -265,6 +315,8 @@ Usage: $(basename "$0") <command>
               on | off      start / stop the service (sudo; not started at boot, saves power)
               status        service state and whether TUN is on
               tun on|off    toggle transparent proxy (TUN) at runtime, no rebuild needed
+              nodes         list the nodes of the PROXY group (current one marked)
+              use <n|name>  switch node by number (from "nodes") or by exact name
   help      Show this help
 
 Environment (optional): NIXOS_HOST=${HOST}  NIXOS_USER=${USER_NAME}  NIX_INPUTS_DIR=${INPUTS_DIR}
