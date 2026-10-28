@@ -118,7 +118,9 @@ rebuild() {
   say "Checking configuration first"
   cmd_check
   say "Running: sudo nixos-rebuild ${action}"
-  sudo nixos-rebuild "$action" --flake ".#${HOST}" "${OVERRIDES[@]}" 2> >(lock_filter >&2)
+  # 这一行刻意不用 lock_filter：把 nixos-rebuild 的 stderr 接进后台的过滤进程，会让它和 sudo
+  # 共用的终端输出错乱（每行越缩越右的"阶梯"）。代价是 switch 时会多打印一段锁文件警告，无害
+  sudo nixos-rebuild "$action" --flake ".#${HOST}" "${OVERRIDES[@]}"
   ok "nixos-rebuild ${action} completed 🎉"
   if [ "$action" = "switch" ] || [ "$action" = "test" ]; then
     echo "   Tip: open a new shell (or run: hash -r) if a newly installed command is not found."

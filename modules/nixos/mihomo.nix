@@ -26,8 +26,7 @@
   # `-m rpfilter --validmark --loose`，开 TUN 后 `getent hosts github.com` 立即恢复应答。
   # "loose" 只要求回复能从任意网卡出去，是 NixOS 上 Tailscale/WireGuard/Clash 类 TUN 工具的常规做法。
   # 代价：放宽了一项反 IP 欺骗检查，对笔记本日常使用影响很小。
-  # 注意：光有这一项还不够，TUN 的栈要用 gvisor（见 examples/mihomo/config.example.yaml），
-  # 默认的 mixed 栈在这台机器上 TCP 不通
+  # 注意：光有这一项还不够，TCP 还需要下面的 trustedInterfaces，否则 DNS 好了但 HTTPS 连不上
   networking.firewall.checkReversePath = "loose";
 
   # 把 TUN 网卡设为受信任网卡，让 mixed / system 栈的 TCP 能通。
@@ -35,6 +34,8 @@
   # 没有放行 Meta 的规则；mixed / system 栈会在 TUN 地址（198.18.0.1）上开 TCP 监听，
   # 数据包被改写后"进入本机"，是新连接，被最后一条规则丢弃，所以 curl 停在 Trying 然后超时，
   # mihomo 日志里也看不到这条连接。不依赖本机监听的 gvisor 栈则不受影响。
+  # 验证：运行中的防火墙出现 `-A nixos-fw -i Meta -j nixos-fw-accept` 后，mixed 和 system 栈的
+  # HTTPS 都恢复（HTTP 200）。
   # 安全性：TUN 的另一端就是 mihomo 自己，没有外部对端，信任它不会向外暴露端口。
   # 网卡名 Meta 是 mihomo 的默认值，基础设置里也显式写了 device: Meta，两边要保持一致
   networking.firewall.trustedInterfaces = [ "Meta" ];

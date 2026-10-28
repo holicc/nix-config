@@ -36,20 +36,21 @@ geox-url:
   asn: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb"
 
 # 透明代理（TUN）：默认关闭（更省电）；需要全局代理时 `nx proxy tun on`，用完 `nx proxy tun off`。
-# 在这台机器上排查出两个问题，都已处理：
+# 在这台机器上排查出两个问题，都已处理并实测验证，都在 modules/nixos/mihomo.nix 里：
 #   1. DNS 失效：NixOS 防火墙的严格反向路径过滤丢掉 TUN 回包，
-#      已在 modules/nixos/mihomo.nix 里设 networking.firewall.checkReversePath = "loose"
-#   2. DNS 好了但 HTTPS 连不上：默认的 mixed 栈 TCP 通道不通，换成 gvisor 栈后正常
-#      （实测：国内镜像直连 0.5 秒，GitHub 走代理约 80KB/s）。
-#      gvisor 是用户态网络栈，CPU 占用比 system/mixed 略高，所以 TUN 只在需要时开
+#      处理：networking.firewall.checkReversePath = "loose"
+#   2. DNS 好了但 HTTPS 连不上：mixed / system 栈在 TUN 地址上开 TCP 监听，防火墙不放行从 Meta
+#      网卡进来的新连接，TCP 被丢弃；处理：networking.firewall.trustedInterfaces = [ "Meta" ]
+#      （实测：国内镜像直连约 0.3 秒，GitHub 走代理约 50KB/s）
 # 第一次开启时请保留一个已登录的 SSH 会话兜底，出问题 `nx proxy tun off`
 tun:
   enable: false
   # 网卡名固定为 Meta：modules/nixos/mihomo.nix 里的防火墙 trustedInterfaces 按这个名字放行
   device: Meta
-  # 暂时用 gvisor（已实测可用）。mixed / system 不通的原因推断是防火墙没放行 Meta 网卡，
-  # 已在 mihomo.nix 里加了 trustedInterfaces，switch 后用 mixed 实测通过再把这里改回 mixed
-  stack: gvisor
+  # mixed（TCP 走系统栈，UDP 走用户态）比 gvisor 省 CPU，已实测可用（system 也可用）。
+  # 它要求防火墙放行 Meta 网卡（modules/nixos/mihomo.nix 的 trustedInterfaces），否则 TCP 连不上；
+  # 如果以后防火墙设置有变动导致 TCP 不通，临时改成 gvisor 可以绕开（用户态栈不经过本机输入链）
+  stack: mixed
   auto-route: true
   auto-detect-interface: true
   dns-hijack:
