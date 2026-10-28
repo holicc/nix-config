@@ -17,6 +17,7 @@
     ../modules/nixos/power.nix  # 电源管理（TLP）
     ../modules/nixos/niri.nix   # 桌面：Niri + greetd + 终端 + 截图
     ../modules/nixos/fonts.nix  # 字体：Nerd Font + 中文
+    ../modules/nixos/mihomo.nix # 代理：mihomo（Clash 内核），按需启动，nix/git 访问 GitHub 用
   ];
 
   # 系统首次安装时的版本，决定有状态数据的默认格式。

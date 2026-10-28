@@ -1,0 +1,64 @@
+# mihomo 配置模板：不含任何订阅或密钥，可以放心提交到公开仓库。
+# 使用：./scripts/nixos.sh proxy init   会把它复制到 ~/.config/mihomo/config.yaml（权限 600），
+# 然后编辑那份副本，把下面的订阅地址换成你自己的。**不要把填好订阅的文件提交到 git。**
+#
+# 文档：https://wiki.metacubex.one/
+
+# 本机代理端口（HTTP + SOCKS5 混合）。nix、git 通过它访问外网：
+#   ./scripts/nixos.sh proxy run <命令>
+mixed-port: 7890
+allow-lan: false          # 不对局域网开放，只给本机用
+mode: rule
+log-level: info
+
+# 本地 API，仅监听本机，没有网页界面；脚本用它切换 TUN（proxy tun on|off）。
+# 同机的任何程序都能调用它，如果在意可以取消下一行注释设置密钥
+# （脚本读取不了密钥时，需要改脚本里的 curl 加上 Authorization 头）。
+external-controller: 127.0.0.1:9090
+# secret: "改成一个随机字符串"
+
+# 透明代理（TUN）：默认关闭，需要全局代理时 `./scripts/nixos.sh proxy tun on`。
+# 开启会让所有流量经过 mihomo，更耗电；不用时保持关闭，普通代理（上面的 7890）仍可用。
+tun:
+  enable: false
+  stack: mixed
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+
+dns:
+  enable: true
+  enhanced-mode: fake-ip
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+# 订阅：mihomo 会自己下载节点并定时更新。把 url 换成你的订阅地址。
+proxy-providers:
+  sub:
+    type: http
+    url: "在这里填订阅地址"
+    interval: 3600
+    path: ./sub.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    use:
+      - sub
+
+# 规则刻意不用 GEOIP / GEOSITE：它们需要 mihomo 启动时从 GitHub 下载数据库，
+# 而这台机器访问 GitHub 很慢，会卡住启动。这里只用域名和网段规则。
+rules:
+  - DOMAIN-SUFFIX,ustc.edu.cn,DIRECT   # nix 的国内镜像，直连更快
+  - DOMAIN-SUFFIX,cn,DIRECT
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - MATCH,PROXY

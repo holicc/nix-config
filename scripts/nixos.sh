@@ -132,6 +132,66 @@ cmd_status() {
   done
 }
 
+# ---- 代理（mihomo，即 Clash 内核）----
+# 订阅地址属于敏感信息，配置放在仓库外的 PROXY_CONF，脚本只负责复制模板、启停、切换 TUN。
+PROXY_CONF="${MIHOMO_CONF:-$HOME/.config/mihomo/config.yaml}"
+PROXY_PORT="${MIHOMO_PORT:-7890}"
+PROXY_API="${MIHOMO_API:-127.0.0.1:9090}"
+
+cmd_proxy() {
+  local sub="${1:-status}"
+  shift || true
+  case "$sub" in
+    init)
+      # 复制模板到仓库外并收紧权限；已存在则不覆盖，避免丢掉你填好的订阅
+      if [ -e "$PROXY_CONF" ]; then
+        echo "已存在：$PROXY_CONF（不覆盖）"
+      else
+        mkdir -p "$(dirname "$PROXY_CONF")"
+        cp examples/mihomo/config.example.yaml "$PROXY_CONF"
+        chmod 600 "$PROXY_CONF"
+        say "已创建 $PROXY_CONF"
+      fi
+      echo "下一步：编辑它，把 proxy-providers.sub.url 换成你的订阅地址（不要提交到 git）"
+      ;;
+    on)
+      [ -f "$PROXY_CONF" ] || die "没有配置文件，先运行：$0 proxy init，并填入订阅地址"
+      grep -q "在这里填订阅地址" "$PROXY_CONF" && die "配置里还是占位符，请先在 $PROXY_CONF 填入订阅地址"
+      sudo systemctl start mihomo
+      echo "mihomo 已启动，本机代理：http://127.0.0.1:${PROXY_PORT}"
+      echo "让命令走代理：$0 proxy run <命令>，例如 $0 proxy run git push"
+      ;;
+    off)
+      sudo systemctl stop mihomo
+      echo "mihomo 已停止"
+      ;;
+    status)
+      printf 'mihomo 服务：%s\n' "$(systemctl is-active mihomo 2>/dev/null || true)"
+      if [ -f "$PROXY_CONF" ]; then echo "配置文件：$PROXY_CONF"; else echo "配置文件：缺失（先 proxy init）"; fi
+      if systemctl is-active --quiet mihomo; then
+        printf 'TUN 透明代理：'
+        curl -s "http://${PROXY_API}/configs" | grep -o '"tun":{"enable":[a-z]*' | grep -o '[a-z]*$' || echo "读取失败"
+      fi
+      ;;
+    tun)
+      # 运行时切换透明代理，不需要重新构建；需要 mihomo 已启动
+      local state="${1:-}"
+      case "$state" in on) state=true ;; off) state=false ;; *) die "用法：$0 proxy tun on|off" ;; esac
+      curl -sf -X PATCH "http://${PROXY_API}/configs" -H 'Content-Type: application/json' \
+        -d "{\"tun\":{\"enable\":${state}}}" || die "切换失败：mihomo 是否已启动（proxy on）？"
+      echo "TUN 已设为 ${state}"
+      ;;
+    run)
+      # 让一条命令走代理，例如：proxy run git push / proxy run nix flake show
+      [ "$#" -gt 0 ] || die "用法：$0 proxy run <命令>"
+      systemctl is-active --quiet mihomo || die "mihomo 没有运行，先：$0 proxy on"
+      https_proxy="http://127.0.0.1:${PROXY_PORT}" http_proxy="http://127.0.0.1:${PROXY_PORT}" \
+      HTTPS_PROXY="http://127.0.0.1:${PROXY_PORT}" HTTP_PROXY="http://127.0.0.1:${PROXY_PORT}" "$@"
+      ;;
+    *) die "未知的 proxy 子命令：$sub（init|on|off|status|tun|run）" ;;
+  esac
+}
+
 usage() {
   cat <<EOF
 用法：$(basename "$0") <命令>
@@ -146,6 +206,12 @@ usage() {
   pkgs      列出已安装的软件包和字体
   gc        清理 7 天前的旧版本（需要 sudo）
   status    内核、系统版本、本地 input、仓库状态、关键服务
+  proxy     代理（mihomo / Clash 内核），子命令：
+              init          复制配置模板到 ~/.config/mihomo/config.yaml，之后自己填订阅地址
+              on | off      启动 / 停止服务（需要 sudo；默认不随开机启动，省电）
+              status        服务状态和 TUN 是否开启
+              tun on|off    运行时切换透明代理（TUN），不用重新构建
+              run <命令>    让一条命令走代理，例如：proxy run git push
   help      显示本说明
 
 环境变量（可选）：NIXOS_HOST=${HOST}  NIXOS_USER=${USER_NAME}  NIX_INPUTS_DIR=${INPUTS_DIR}
@@ -163,6 +229,7 @@ case "${1:-help}" in
   pkgs)   cmd_pkgs ;;
   gc)     cmd_gc ;;
   status) cmd_status ;;
+  proxy)  shift; cmd_proxy "$@" ;;
   help|-h|--help) usage ;;
   *) usage; exit 1 ;;
 esac

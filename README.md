@@ -13,7 +13,7 @@ nixos-config/
 ├── modules/nixos/             系统级模块：base、power、niri、fonts
 ├── home/                      用户级（home-manager）：default.nix + niri/ + noctalia/
 ├── scripts/nixos.sh           维护脚本（构建、校验、对比、清理等）
-└── examples/rust-flake-template/   Rust 项目的 nix develop 模板（不属于系统配置）
+└── examples/                  rust-flake-template（Rust 的 nix develop 模板）、mihomo（代理配置模板，不含订阅）
 ```
 
 每个目录有自己的 `README.md`，说明里面每个文件的作用。
@@ -46,13 +46,28 @@ nixos-config/
 - **直接敲 `nix flake show`、`nixos-rebuild` 等命令会联网下载**，请用 `./scripts/nixos.sh`，或手动带上脚本里的 `OVERRIDES` 参数。
 - 当前系统和旧版本不依赖这些目录（源码已复制进 `/nix/store`），只是影响"再次构建"。
 
+## 代理（访问 GitHub 慢）
+
+这台机器访问 GitHub 很慢，装了 mihomo（Clash 内核）作为**按需启动**的代理服务，主要给 nix 和 git 用：
+
+```bash
+./scripts/nixos.sh proxy init      # 生成配置副本，然后编辑它，填入你的订阅地址
+./scripts/nixos.sh proxy on        # 启动
+./scripts/nixos.sh proxy run git push    # 让某条命令走代理
+./scripts/nixos.sh proxy off       # 停止（不用时不占电）
+```
+
+- 订阅地址在 `~/.config/mihomo/config.yaml`，**在仓库外，绝不要提交**；仓库里只有不含订阅的模板 `examples/mihomo/config.example.yaml`。
+- 透明代理（TUN）默认关闭，需要时 `proxy tun on`，不需要重新构建。
+- 没有安装 webui，管理都通过脚本。详见 `scripts/README.md`。
+
 ## 软件与服务
 
 | 类别 | 内容 |
 |---|---|
 | 桌面 | Niri 26.04、Noctalia 5.4（Shell）、greetd + tuigreet、alacritty、grim + slurp |
 | 电源 | TLP（`power-profiles-daemon` 必须关闭，两者互斥）、UPower（电池显示） |
-| 连接 | NetworkManager、BlueZ（蓝牙，开机默认不上电以省电）、OpenSSH |
+| 连接 | NetworkManager、BlueZ（蓝牙，开机默认不上电以省电）、OpenSSH、mihomo（代理，按需启动） |
 | 字体 | CaskaydiaCove Nerd Font、Noto CJK 中文 |
 | 开发 | Rust 走项目级 `nix develop`，**不在系统全局安装**，模板见 `examples/rust-flake-template/flake.nix` |
 
