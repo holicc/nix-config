@@ -39,7 +39,7 @@
           home-manager.extraSpecialArgs = { inherit inputs; };
           # 若已有同名文件导致冲突，自动备份为 .backup 而不是报错
           home-manager.backupFileExtension = "backup";
-          home-manager.users.joe = import ./home-manager/home.nix;
+          home-manager.users.joe = import ./home;
         }
       ];
     };

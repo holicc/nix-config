@@ -1,0 +1,12 @@
+// 外观：窗口间距 8，聚焦环改为 Catppuccin 淡紫色细边（默认是亮蓝色），并开启窗口阴影。
+// 不开背景模糊（续航优先，模糊会增加 GPU 负担）
+layout {
+    gaps 8
+    focus-ring {
+        width 2
+        active-color "#cba6f7"
+    }
+    shadow {
+        on
+    }
+}

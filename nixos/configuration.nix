@@ -16,6 +16,7 @@
     ../modules/nixos/base.nix   # 主机名/时区/引导/SSH/用户/全局工具
     ../modules/nixos/power.nix  # 电源管理（TLP）
     ../modules/nixos/niri.nix   # 桌面：Niri + greetd + 终端 + 截图
+    ../modules/nixos/fonts.nix  # 字体：Nerd Font + 中文
   ];
 
   # 系统首次安装时的版本，决定有状态数据的默认格式。

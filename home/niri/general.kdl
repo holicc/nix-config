@@ -1,0 +1,11 @@
+// 启动 Noctalia v5（二进制名是 noctalia）
+spawn-at-startup "noctalia"
+
+// 请求程序不画自己的标题栏（客户端装饰），窗口只剩圆角、阴影和聚焦环。
+// 这只是"请求"，个别程序仍可能保留标题栏。没有标题栏后用快捷键关闭/移动窗口（见 keybindings.kdl）
+prefer-no-csd
+
+// 允许 Noctalia 的通知操作和窗口激活
+debug {
+    honor-xdg-activation-with-invalid-serial
+}

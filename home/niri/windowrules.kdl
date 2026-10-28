@@ -1,0 +1,13 @@
+// 窗口圆角并裁剪内容，与 Noctalia 风格一致
+window-rule {
+    geometry-corner-radius 20
+    clip-to-geometry true
+}
+
+// Noctalia 设置窗口以浮动方式打开（尺寸需小于屏幕逻辑高度 914，否则底部会被裁掉）
+window-rule {
+    match app-id="dev.noctalia.Noctalia"
+    open-floating true
+    default-column-width { fixed 1200; }
+    default-window-height { fixed 820; }
+}

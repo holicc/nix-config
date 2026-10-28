@@ -1,0 +1,8 @@
+// 触摸板：轻点即单击（双指轻点右键、三指中键）、自然滚动、打字时临时禁用以防误触
+input {
+    touchpad {
+        tap
+        natural-scroll
+        dwt
+    }
+}

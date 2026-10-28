@@ -1,4 +1,4 @@
-# joe 用户级配置：Niri 个人配置（快捷键等）+ Noctalia v5 设置
+# Noctalia v5 桌面 Shell 的设置（状态栏 / 通知 / 启动器 / 锁屏 / 主题等）
 { inputs, ... }:
 {
   # Noctalia v5 的 home-manager 模块来自 flake input（main 分支）。
@@ -6,13 +6,6 @@
   # 此选项名可能随上游更新变化，如遇报错请查阅 docs.noctalia.dev
   imports = [ inputs.noctalia.homeModules.default ];
 
-  home.username = "joe";
-  home.homeDirectory = "/home/joe";
-
-  # 用户级 stateVersion，同样不要随升级改动
-  home.stateVersion = "26.05";
-
-  # Noctalia 桌面 Shell（状态栏/通知/启动器等）。
   # 电池组件已在 v5 默认状态栏里，前提是系统层开启 UPower（见 modules/nixos/power.nix）。
   # 此选项名可能随上游更新变化，如遇报错请查阅 docs.noctalia.dev
   programs.noctalia = {
@@ -24,12 +17,62 @@
       # 关闭首次启动向导：该向导（含隐私弹窗）会卡住启动，声明式部署不需要它
       shell.setup_wizard_enabled = false;
 
+      # 界面字体：需要系统已安装该字体（见 modules/nixos/fonts.nix），否则回退为默认字体。
+      # 字体名以 `fc-list` 查到的为准
+      shell.font_family = "CaskaydiaCove Nerd Font";
+
       # 通知和 OSD 放右下角，避开顶部状态栏
       osd.position = "bottom_right";
       notification.position = "bottom_right";
 
+      # 启动器布局：simple = 顶部搜索框 + 分类标签 + 结果列表（固定 560x500），
+      # 类似 Spotlight/Raycast；默认的 full 带最近/固定/全部/分类多个视图。
+      # ryan4yin 没有自定义启动器，用的是默认值，这一项是我们自己的选择
+      shell.launcher.layout = "simple";
+
+      # 截图：框选区域后打开 Noctalia 自带的标注编辑器（替代 grim/slurp 的纯截图），
+      # 保存到 ~/Pictures/Screenshots。对应快捷键见 ../niri/keybindings.kdl 的 Mod+Shift+S
+      shell.screenshot = {
+        annotate = true;
+        directory = "~/Pictures/Screenshots";
+      };
+
+      # 电源菜单：指定动作列表会替换内置默认，所以 5 个动作要全部写出。
+      # 除锁屏外都有 10 秒确认倒计时：第一次按下开始倒计时，再按立即执行，Esc 取消，防止误按关机。
+      # 借鉴自 ryan4yin/nix-config
+      shell.session.actions = [
+        { action = "lock"; shortcut = "1"; }
+        { action = "logout"; shortcut = "2"; countdown_seconds = 10; }
+        { action = "lock_and_suspend"; shortcut = "3"; countdown_seconds = 10; }
+        { action = "reboot"; shortcut = "4"; countdown_seconds = 10; }
+        { action = "shutdown"; shortcut = "5"; variant = "destructive"; countdown_seconds = 10; }
+      ];
+
       # 面板整体放大 10%，适合 2560x1600 高分屏
       accessibility.ui_scale = 1.1;
+
+      # 夜间护眼：日落后自动把屏幕色温调暖（白天 6500K、夜晚 4000K），按下面的位置计算日落
+      nightlight.enabled = true;
+
+      # 壁纸目录：启动器 /wall 和状态栏壁纸图标从这里读取图片
+      wallpaper.directory = "/home/joe/Pictures/Wallpapers";
+
+      # 空闲管理：10 分钟无操作锁屏，11 分钟关闭屏幕（续航）。
+      # 刻意不开自动挂起：这台机器靠 SSH 管理，挂起会让 SSH 断开。
+      # 锁屏走 PAM 的 login 服务，已确认 /etc/pam.d/login 存在
+      idle.behavior.lock = {
+        timeout = 600;
+        action = "lock";
+        enabled = true;
+      };
+      idle.behavior."screen-off" = {
+        timeout = 660;
+        action = "screen_off";
+        enabled = true;
+      };
+
+      # 低电量提醒：20% 就提醒（默认 10%），5% 仍有严重警告
+      battery.warning_threshold = 20;
 
       # 位置：用于按日出日落自动切换深浅色（以及天气）。
       # 若解析不出位置，改成更常见的写法如 "Luzhou"，或查阅 docs.noctalia.dev
@@ -72,55 +115,4 @@
       widget.media.hide_when_no_media = true;
     };
   };
-
-  # Niri 个人配置：nixpkgs 版 niri 没有 home-manager 选项，直接写 KDL。
-  # 其中 Noctalia 相关规则参考官方文档 docs.noctalia.dev/noctalia/compositor-settings/niri/
-  # 排查方向：`niri validate` 检查语法
-  xdg.configFile."niri/config.kdl".text = ''
-    // 启动 Noctalia v5（二进制名是 noctalia）
-    spawn-at-startup "noctalia"
-
-    // 窗口圆角并裁剪内容，与 Noctalia 风格一致
-    window-rule {
-        geometry-corner-radius 20
-        clip-to-geometry true
-    }
-
-    // Noctalia 设置窗口以浮动方式打开
-    window-rule {
-        match app-id="dev.noctalia.Noctalia"
-        open-floating true
-        default-column-width { fixed 1080; }
-        default-window-height { fixed 920; }
-    }
-
-    // 允许 Noctalia 的通知操作和窗口激活
-    debug {
-        honor-xdg-activation-with-invalid-serial
-    }
-
-    binds {
-        Mod+Return { spawn "alacritty"; }
-        Mod+Q { close-window; }
-        Mod+Tab { toggle-overview; }          // Overview 需 niri >=25.05
-        Mod+Left  { focus-column-left; }
-        Mod+Right { focus-column-right; }
-        Mod+Shift+S { spawn "sh" "-c" "grim -g \"$(slurp)\" ~/screenshot-$(date +%s).png"; }
-        Mod+Shift+E { quit; }
-
-        // Noctalia：启动器、控制中心、设置
-        Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
-        Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
-        Mod+Shift+Comma { spawn-sh "noctalia msg settings-toggle"; }
-
-        // 音量与亮度（由 Noctalia 处理并显示 OSD）
-        XF86AudioRaiseVolume { spawn-sh "noctalia msg volume-up"; }
-        XF86AudioLowerVolume { spawn-sh "noctalia msg volume-down"; }
-        XF86AudioMute { spawn-sh "noctalia msg volume-mute"; }
-        XF86MonBrightnessUp { spawn-sh "noctalia msg brightness-up"; }
-        XF86MonBrightnessDown { spawn-sh "noctalia msg brightness-down"; }
-    }
-  '';
-
-  programs.home-manager.enable = true;
 }
