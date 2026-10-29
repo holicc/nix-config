@@ -110,8 +110,9 @@
   # 整份预设原样放在同目录的 starship-catppuccin-powerline.toml，改样式直接编辑那个文件。
   # 换别的预设：到 https://starship.rs/presets/ 下载 toml 覆盖它，
   # 或终端里 `starship preset <名字> -o 文件` 生成。
-  # 预设来自 Starship 主分支，可能含有当前版本（nixpkgs 里的）还不认识的新模块，启动时会报
-  # `Unknown key`：直接把对应的 [模块] 段落删掉即可（已删掉 jj_bookmark、jj_status）。
+  # 预设来自 Starship 最新版，可能含有稳定分支（26.05）里的 Starship 还不认识的新模块，
+  # 启动时会报 `Unknown key`：把预设里对应的 [模块] 段落删掉即可。
+  # 已删掉 jj_bookmark、jj_status：它们是 Jujutsu（jj）版本控制的模块，预设的 format 里本来就没用到它们。
   # 预设里的分段符号和图标是 Nerd Font 私有区字符，直接复制文件即可，不要手敲或在编辑器里重新保存成别的编码。
   # 图标需要 Nerd Font：Alacritty 已设成 CaskaydiaCove Nerd Font（见 home/alacritty/default.nix）。
   # 配色是 Catppuccin Mocha（预设里的 palette），与 Noctalia、Alacritty 一致。
