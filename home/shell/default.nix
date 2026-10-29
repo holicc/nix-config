@@ -5,8 +5,12 @@
 #   Nushell 不兼容这些语法，设成登录 shell 会让 `ssh 主机 'bash 命令'` 这类用法全部出错。
 #   桌面上的 Alacritty 直接启动 nu（见 home/alacritty/default.nix 的 terminal.shell）；
 #   SSH 登录进去还是 bash，想用 Nushell 时输入 `nu`。
-{ ... }:
+{ pkgs, ... }:
 {
+  # vivid：按主题生成 LS_COLORS（ls 和 Nushell 里文件名的颜色）。
+  # 不装它时 Nushell 用内置默认配色，其中 README 之类的文件是黄底色块，在深色主题下几乎看不清
+  home.packages = [ pkgs.vivid ];
+
   # Nushell：命令输出是结构化的表格，可以直接按列过滤、排序，如 `ls | where size > 1mb`。
   # home-manager 会生成它的 config.nu / env.nu。
   # 排查方向：Nushell 版本升级后偶有语法或配置项变化，启动时报错先查 nushell.sh 的更新说明
@@ -53,6 +57,9 @@
     # 借鉴自 ryan4yin/nix-config
     extraConfig = ''
       # 把 ~/.local/bin 加进 PATH（自己装的工具常放在这里）
+      # 文件名配色：Catppuccin Mocha，全部是前景色，没有背景色块，补全菜单反色高亮时也看得清
+      $env.LS_COLORS = (vivid generate catppuccin-mocha | str trim)
+
       use std/util "path add"
       path add "~/.local/bin"
       $env.PATH = ($env.PATH | uniq)
