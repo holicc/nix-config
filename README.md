@@ -13,6 +13,7 @@ home/                       用户级（home-manager）
   default.nix               入口，只写 imports
   niri/ noctalia/ alacritty/ theme/ shell/ dev/    一个程序或用途一个目录
     dev/git.nix             gh
+    dev/build.nix           gcc（提供 cc）
     dev/lang/               语言工具链：go、rust、python、node
 scripts/nixos.sh            维护脚本，装成 nx 命令
 examples/mihomo/            代理基础配置模板（不含订阅）
