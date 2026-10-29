@@ -83,11 +83,11 @@
       # 若解析不出位置，改成更常见的写法如 "Luzhou"，或查阅 docs.noctalia.dev
       location.address = "Luzhou, Sichuan, China";
 
-      # 主题：内置 Catppuccin 配色，mode = "auto" 按上面位置的日出日落切换深浅色
+      # 主题：内置 Catppuccin 配色，固定浅色（不再按日出日落自动切换）。想换回自动：mode = "auto"
       theme = {
         source = "builtin";
         builtin = "Catppuccin";
-        mode = "auto";
+        mode = "light";
       };
 
       # 状态栏：半透明、文字略大、两端留白更宽（让居中的时钟不被挤占）

@@ -62,8 +62,8 @@ in
     # 借鉴自 ryan4yin/nix-config
     extraConfig = ''
       # 把 ~/.local/bin 加进 PATH（自己装的工具常放在这里）
-      # 文件名配色：Catppuccin Mocha，全部是前景色，没有背景色块，补全菜单反色高亮时也看得清
-      $env.LS_COLORS = (vivid generate catppuccin-mocha | str trim)
+      # 文件名配色：Catppuccin Latte，全部是前景色，没有背景色块，补全菜单反色高亮时也看得清
+      $env.LS_COLORS = (vivid generate catppuccin-latte | str trim)
 
       use std/util "path add"
       path add "~/.local/bin"
@@ -136,7 +136,7 @@ in
   # Starship：提示符里显示 git 分支和状态、nix-shell 环境、命令耗时、上一条命令是否失败。
   # 跨 shell，这里同时在 bash 和 Nushell 里启用，所以不管用哪个都有同样的提示符。
   # 图标需要 Nerd Font：Alacritty 已设成 CaskaydiaCove Nerd Font（见 home/alacritty/default.nix）。
-  # 配色用 Catppuccin Mocha，与 Noctalia、Alacritty 保持一致
+  # 配色用 Catppuccin Latte（浅色），与 Noctalia、Alacritty 保持一致
   programs.starship = {
     enable = true;
     enableBashIntegration = true;
@@ -145,7 +145,7 @@ in
     settings = {
       add_newline = true;
       command_timeout = 500;
-      palette = "catppuccin_mocha";
+      palette = "catppuccin_latte";
 
       # 两行提示符：第一行是位置和状态，第二行只有输入符，命令再长也不会挤掉路径。
       # username / hostname 默认只在 SSH 登录时显示
@@ -195,34 +195,34 @@ in
         format = "[$hostname]($style) ";
       };
 
-      # Catppuccin Mocha 调色板，上面的 style 里用名字引用
-      palettes.catppuccin_mocha = {
-        rosewater = "#f5e0dc";
-        flamingo = "#f2cdcd";
-        pink = "#f5c2e7";
-        mauve = "#cba6f7";
-        red = "#f38ba8";
-        maroon = "#eba0ac";
-        peach = "#fab387";
-        yellow = "#f9e2af";
-        green = "#a6e3a1";
-        teal = "#94e2d5";
-        sky = "#89dceb";
-        sapphire = "#74c7ec";
-        blue = "#89b4fa";
-        lavender = "#b4befe";
-        text = "#cdd6f4";
-        subtext1 = "#bac2de";
-        subtext0 = "#a6adc8";
-        overlay2 = "#9399b2";
-        overlay1 = "#7f849c";
-        overlay0 = "#6c7086";
-        surface2 = "#585b70";
-        surface1 = "#45475a";
-        surface0 = "#313244";
-        base = "#1e1e2e";
-        mantle = "#181825";
-        crust = "#11111b";
+      # Catppuccin Latte（浅色）调色板，上面的 style 里用名字引用
+      palettes.catppuccin_latte = {
+        rosewater = "#dc8a78";
+        flamingo = "#dd7878";
+        pink = "#ea76cb";
+        mauve = "#8839ef";
+        red = "#d20f39";
+        maroon = "#e64553";
+        peach = "#fe640b";
+        yellow = "#df8e1d";
+        green = "#40a02b";
+        teal = "#179299";
+        sky = "#04a5e5";
+        sapphire = "#209fb5";
+        blue = "#1e66f5";
+        lavender = "#7287fd";
+        text = "#4c4f69";
+        subtext1 = "#5c5f77";
+        subtext0 = "#6c6f85";
+        overlay2 = "#7c7f93";
+        overlay1 = "#8c8fa1";
+        overlay0 = "#9ca0b0";
+        surface2 = "#acb0be";
+        surface1 = "#bcc0cc";
+        surface0 = "#ccd0da";
+        base = "#eff1f5";
+        mantle = "#e6e9ef";
+        crust = "#dce0e8";
       };
     };
   };
