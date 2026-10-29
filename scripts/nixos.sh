@@ -262,11 +262,13 @@ proxy_urlenc() {
 # （见 modules/nixos/mihomo.nix 的 ExecStartPre）。下载地址取自基础设置里的 geox-url.mmdb
 PROXY_GEODB="${MIHOMO_GEODB:-$(dirname "$PROXY_CONF")/geoip.metadb}"
 proxy_fetch_geodata() {
-  local url
+  local url via=()
   url="$(grep -m1 -E '^  mmdb:' examples/mihomo/config.example.yaml | sed -E 's/^  mmdb: *"?([^"]*)"?.*/\1/')"
+  # mihomo 在运行就走它的本地代理端口下载（直连镜像只有约 100KB/s，经代理快得多）；没运行就直连
+  if systemctl is-active --quiet mihomo; then via=(-x "http://127.0.0.1:${PROXY_PORT}"); fi
   if [ -z "$url" ]; then warn "no geox-url.mmdb in the base settings; skipping the geoip.metadb download"; return 0; fi
   say "Downloading geoip.metadb (about 8 MB; the mirror can be slow, up to a few minutes)"
-  if curl -fL --retry 3 --retry-delay 2 -m 300 -o "${PROXY_GEODB}.part" "$url" 2>/dev/null; then
+  if curl -fL "${via[@]}" --retry 3 --retry-delay 2 -m 300 -o "${PROXY_GEODB}.part" "$url" 2>/dev/null; then
     mv "${PROXY_GEODB}.part" "$PROXY_GEODB"
     ok "Saved ${PROXY_GEODB}"
   else
