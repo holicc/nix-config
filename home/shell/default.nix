@@ -6,11 +6,6 @@
 #   桌面上的 Alacritty 直接启动 nu（见 home/alacritty/default.nix 的 terminal.shell）；
 #   SSH 登录进去还是 bash，想用 Nushell 时输入 `nu`。
 { ... }:
-let
-  # Nerd Font 图标是私有区字符，直接写进源文件容易在复制、编辑时丢失，
-  # 所以用 JSON 的 \u 转义按码点生成（Nix 字符串本身不支持 \u 转义）
-  icon = code: builtins.fromJSON ''"\u${code}"'';
-in
 {
   # Nushell：命令输出是结构化的表格，可以直接按列过滤、排序，如 `ls | where size > 1mb`。
   # home-manager 会生成它的 config.nu / env.nu。
@@ -103,100 +98,19 @@ in
     enableNushellIntegration = true;
   };
 
-  # bat：带语法高亮和行号的 cat。配色由 home/theme（catppuccin）自动提供
-  programs.bat.enable = true;
-
-  # Starship：提示符里显示 git 分支和状态、nix-shell 环境、命令耗时、上一条命令是否失败。
-  # 跨 shell，这里同时在 bash 和 Nushell 里启用，所以不管用哪个都有同样的提示符。
+  # Starship：跨 shell 的提示符，这里同时在 bash 和 Nushell 里启用。
+  # 样式用官方预设 catppuccin-powerline（彩色色块分段：系统、用户、目录、git、语言环境、时间），
+  # 整份预设原样放在同目录的 starship-catppuccin-powerline.toml，改样式直接编辑那个文件。
+  # 换别的预设：到 https://starship.rs/presets/ 下载 toml 覆盖它，
+  # 或终端里 `starship preset <名字> -o 文件` 生成。
+  # 预设里的分段符号和图标是 Nerd Font 私有区字符，直接复制文件即可，不要手敲或在编辑器里重新保存成别的编码。
   # 图标需要 Nerd Font：Alacritty 已设成 CaskaydiaCove Nerd Font（见 home/alacritty/default.nix）。
-  # 配色用 Catppuccin Mocha，与 Noctalia、Alacritty 保持一致
+  # 配色是 Catppuccin Mocha（预设里的 palette），与 Noctalia、Alacritty 一致。
+  # 注意：home/theme 里已经关闭了 catppuccin 官方的 starship 端口，避免和这份预设冲突
   programs.starship = {
     enable = true;
     enableBashIntegration = true;
     enableNushellIntegration = true;
-
-    settings = {
-      add_newline = true;
-      command_timeout = 500;
-      palette = "catppuccin_mocha";
-
-      # 两行提示符：第一行是位置和状态，第二行只有输入符，命令再长也不会挤掉路径。
-      # username / hostname 默认只在 SSH 登录时显示
-      format = "$username$hostname$directory$git_branch$git_status$nix_shell$cmd_duration$line_break$character";
-
-      character = {
-        success_symbol = "[❯](bold green)";
-        error_symbol = "[❯](bold red)";
-      };
-
-      directory = {
-        style = "bold lavender";
-        truncation_length = 3;
-        truncation_symbol = "…/";
-      };
-
-      git_branch = {
-        symbol = "${icon "e0a0"} "; # powerline 分支图标
-        style = "bold mauve";
-      };
-
-      git_status = {
-        style = "bold peach";
-      };
-
-      # 在 nix-shell / nix develop 里时提示，避免忘了自己在临时环境中（Rust 开发模板就是这样用的）
-      nix_shell = {
-        symbol = "${icon "f313"} "; # Nix 雪花图标
-        style = "bold blue";
-        format = "via [$symbol$state]($style) ";
-      };
-
-      # 命令耗时超过 2 秒才显示
-      cmd_duration = {
-        min_time = 2000;
-        style = "bold yellow";
-        format = "took [$duration]($style) ";
-      };
-
-      username = {
-        style_user = "bold peach";
-        format = "[$user]($style) in ";
-      };
-
-      hostname = {
-        style = "bold green";
-        format = "[$hostname]($style) ";
-      };
-
-      # Catppuccin Mocha 调色板，上面的 style 里用名字引用
-      palettes.catppuccin_mocha = {
-        rosewater = "#f5e0dc";
-        flamingo = "#f2cdcd";
-        pink = "#f5c2e7";
-        mauve = "#cba6f7";
-        red = "#f38ba8";
-        maroon = "#eba0ac";
-        peach = "#fab387";
-        yellow = "#f9e2af";
-        green = "#a6e3a1";
-        teal = "#94e2d5";
-        sky = "#89dceb";
-        sapphire = "#74c7ec";
-        blue = "#89b4fa";
-        lavender = "#b4befe";
-        text = "#cdd6f4";
-        subtext1 = "#bac2de";
-        subtext0 = "#a6adc8";
-        overlay2 = "#9399b2";
-        overlay1 = "#7f849c";
-        overlay0 = "#6c7086";
-        surface2 = "#585b70";
-        surface1 = "#45475a";
-        surface0 = "#313244";
-        base = "#1e1e2e";
-        mantle = "#181825";
-        crust = "#11111b";
-      };
-    };
+    settings = builtins.fromTOML (builtins.readFile ./starship-catppuccin-powerline.toml);
   };
 }
