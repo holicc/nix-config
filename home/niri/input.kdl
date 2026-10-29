@@ -2,14 +2,13 @@
 //
 // 滚动和手势的方向：
 //   Niri 的三指横扫/竖扫方向受 natural-scroll 控制（源码里开启时会把手势增量取反），
-//   开着它时三指横扫和 macOS 相反，所以这里不开 natural-scroll。
-//   但双指滚动内容仍要保持"自然"方向，所以用负的 scroll-factor 把它反转回来。
-//   效果：双指滚动 = 自然滚动，三指手势 = macOS 方向。
-//   如果以后觉得三指方向又不对：删掉 scroll-factor 并加回 natural-scroll 即可恢复原样
+//   所以这里不开 natural-scroll：三指手势是 macOS 方向，双指滚动是传统方向（和自然滚动相反）。
+//   想要双指滚动是自然方向、同时保持三指方向：加回
+//   `scroll-factor vertical=-1.0 horizontal=-1.0`（负系数把双指滚动反转回来）。
+//   只想整体恢复原样（双指自然、三指反向）：加回 `natural-scroll`
 input {
     touchpad {
         tap
         dwt
-        scroll-factor vertical=-1.0 horizontal=-1.0
     }
 }
