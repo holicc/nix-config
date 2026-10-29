@@ -5,7 +5,7 @@
 # 注意：Noctalia 有个"应用主题模板"功能，会改写 Alacritty 的用户配置来同步配色。
 # 这里已经由 home-manager 管理该文件（是 Nix store 里的只读链接），所以不要开启
 # Noctalia 的 Alacritty 模板，否则两边会冲突。代价：Noctalia 切换浅色模式时，
-# 终端配色不会跟着变，始终是 catppuccin 的 latte（浅色）
+# 终端配色不会跟着变，始终是深色 Frappe
 { ... }:
 {
   programs.alacritty = {

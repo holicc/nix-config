@@ -7,9 +7,9 @@
 | `default.nix` | 用户名、家目录、`home.stateVersion`，import 下面两个子目录，并安装 `nx` 命令（转调 `scripts/nixos.sh` 的包装） |
 | `niri/` | 窗口管理器 Niri 的配置 |
 | `noctalia/default.nix` | 桌面 Shell Noctalia v5 的全部设置 |
-| `theme/default.nix` | 统一配色：用 catppuccin/nix（Latte 浅色 + mauve 强调色），Alacritty、btop、fzf 等支持的程序自动套用；Starship 用自带的官方预设，所以关闭了 catppuccin 的 starship 端口。不想要某个程序的配色，设 `catppuccin.<程序>.enable = false` |
+| `theme/default.nix` | 统一配色：用 catppuccin/nix（Frappe + mauve 强调色），Alacritty、btop、fzf 等支持的程序自动套用；Starship 用自带的官方预设，所以关闭了 catppuccin 的 starship 端口。不想要某个程序的配色，设 `catppuccin.<程序>.enable = false` |
 | `alacritty/default.nix` | Alacritty 终端：CaskaydiaCove Nerd Font、内边距、去掉自带标题栏（配色来自 `theme/`）。**不要开 Noctalia 的 Alacritty 应用主题模板**，会与这里冲突；Noctalia 切到浅色模式时终端仍是深色 |
-| `shell/default.nix` | 命令行环境。**Nushell**：不显示欢迎语、模糊补全（不区分大小写）、sqlite 历史 500 万条且多终端互不干扰、`rm` 进回收站、圆角表格、别名 `ll` / `la`。配套小工具（都带 Nushell 集成）：**zoxide**（`z` 跳转目录）、**carapace**（git/cargo/kubectl/nix 等外部命令补全）、**direnv + nix-direnv**（进入带 flake 的项目自动加载开发环境，项目里放 `.envrc` 写 `use flake` 并 `direnv allow`）。**Starship**：简洁的两行提示符（第一行位置、git 分支和状态、nix-shell、耗时，第二行输入符），Catppuccin Latte（浅色）配色，同时在 bash 和 Nushell 里启用，需要 Nerd Font；图标用 `\u` 转义生成，避免源文件里的私有区字符丢失。**登录 shell 仍是 bash**，只有桌面 Alacritty 直接启动 `nu`，SSH 里输入 `nu` 进入 |
+| `shell/default.nix` | 命令行环境。**Nushell**：不显示欢迎语、模糊补全（不区分大小写）、sqlite 历史 500 万条且多终端互不干扰、`rm` 进回收站、圆角表格、别名 `ll` / `la`。配套小工具（都带 Nushell 集成）：**zoxide**（`z` 跳转目录）、**carapace**（git/cargo/kubectl/nix 等外部命令补全）、**direnv + nix-direnv**（进入带 flake 的项目自动加载开发环境，项目里放 `.envrc` 写 `use flake` 并 `direnv allow`）。**Starship**：简洁的两行提示符（第一行位置、git 分支和状态、nix-shell、耗时，第二行输入符），Catppuccin Frappe 配色，同时在 bash 和 Nushell 里启用，需要 Nerd Font；图标用 `\u` 转义生成，避免源文件里的私有区字符丢失。**登录 shell 仍是 bash**，只有桌面 Alacritty 直接启动 `nu`，SSH 里输入 `nu` 进入 |
 
 ## niri/
 

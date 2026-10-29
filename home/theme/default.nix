@@ -10,8 +10,8 @@
   catppuccin = {
     enable = true; # 所有支持的程序默认开启
     autoEnable = true; # 新版要求和 enable 同时写，否则 check 会给出警告
-    flavor = "latte"; # latte（浅色）/ frappe / macchiato / mocha（深色）
-    accent = "mauve"; # 和 Niri 聚焦环（#8839ef）同一个紫色
+    flavor = "frappe"; # latte（浅色）/ frappe / macchiato / mocha：对比度由高到低大致是 mocha > macchiato > frappe
+    accent = "mauve"; # 和 Niri 聚焦环（#ca9ee6）同一个紫色
 
     # Starship 用 home/shell 里手写的两行布局和调色板，不让 catppuccin 的端口覆盖
     starship.enable = false;
