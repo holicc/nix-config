@@ -13,7 +13,11 @@
 
   environment.systemPackages = [
     # --ozone-platform-hint=auto：在 Wayland（Niri）下用原生 Wayland 而不是 XWayland，
-    # 缩放清晰、不模糊
-    (pkgs.google-chrome.override { commandLineArgs = "--ozone-platform-hint=auto"; })
+    # 缩放清晰、不模糊。
+    # --enable-wayland-ime 和 --wayland-text-input-version=3：让 Chrome 在原生 Wayland 下
+    # 使用输入法（Fcitx5），不加的话 Chrome 里打不出中文
+    (pkgs.google-chrome.override {
+      commandLineArgs = "--ozone-platform-hint=auto --enable-wayland-ime --wayland-text-input-version=3";
+    })
   ];
 }
