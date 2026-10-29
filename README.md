@@ -43,7 +43,7 @@ examples/mihomo/            代理基础配置模板（不含订阅）
 | `nx diff` | 构建并对比软件包差异，无输出表示没变 |
 | `nx switch` | 校验后切换系统（需要 sudo）；`test` 不写开机项，`boot` 只设下次开机 |
 | `nx update [input]` | 更新 `flake.lock`，只改锁不构建；不满意 `git checkout flake.lock` |
-| `nx gens` / `nx gc` / `nx status` / `nx pkgs` | 系统版本 / 清理旧版本 / 状态 / 已装软件 |
+| `nx gens` / `nx gc` / `nx status` / `nx pkgs` | 系统版本 / 只保留最新 5 个版本并回收空间 / 状态 / 已装软件 |
 
 `nx help` 看全部命令。直连 GitHub 很慢，`nx update` 前先开代理，并带上 `https_proxy=http://127.0.0.1:7890`。
 

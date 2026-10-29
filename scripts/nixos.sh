@@ -177,12 +177,19 @@ cmd_pkgs() {
   fc-list : family | sort -u
 }
 
-# 清理 7 天前的旧系统版本（之后无法回滚到更早的版本）
+# 只保留最新的 5 个系统版本（含当前这个），更旧的删掉并回收空间；之后无法回滚到被删掉的版本。
+# 个数写在 KEEP_GENERATIONS，要改个数改这一个值。
+# `--delete-generations +N` 表示"保留最新的 N 个"，当前正在用的版本一定在其中。
+# 先删版本链接，再 nix-collect-garbage 回收只被这些旧版本引用的软件包，空间才会真正释放
+KEEP_GENERATIONS=5
 cmd_gc() {
-  say "Removing generations older than 7 days (you cannot roll back to them afterwards)"
-  sudo nix-collect-garbage --delete-older-than 7d
-  nix-collect-garbage --delete-older-than 7d
-  ok "Garbage collection done"
+  say "Keeping only the newest ${KEEP_GENERATIONS} system generations (you cannot roll back to older ones afterwards)"
+  sudo nix-env --profile /nix/var/nix/profiles/system --delete-generations "+${KEEP_GENERATIONS}"
+  sudo nix-collect-garbage
+  # 用户自己的 profile（默认 profile）也同样只留最新的几个，再回收一次
+  nix-env --delete-generations "+${KEEP_GENERATIONS}" >/dev/null 2>&1 || true
+  nix-collect-garbage
+  ok "Garbage collection done: ${KEEP_GENERATIONS} generations kept"
 }
 
 # 一屏看清当前状态
@@ -507,7 +514,7 @@ Usage: $(basename "$0") <command>
             "update nixpkgs" updates only that input. Does not build or switch; preview with: diff
   gens      List all system generations (rollback targets)
   pkgs      List installed packages and fonts
-  gc        Remove generations older than 7 days (sudo)
+  gc        Keep only the newest 5 system generations and reclaim space (sudo)
   status    Kernel, generation, local inputs, repo state, key services
   proxy     Proxy (mihomo / Clash core), subcommands (details: proxy help):
 $(proxy_usage_lines)
