@@ -83,13 +83,13 @@
       # 若解析不出位置，改成更常见的写法如 "Luzhou"，或查阅 docs.noctalia.dev
       location.address = "Luzhou, Sichuan, China";
 
-      # 主题：Catppuccin Frappe（深色但对比度比 Mocha 低）。Noctalia 内置的 Catppuccin 只有 Mocha（深）和
+      # 主题：Catppuccin Macchiato（深色，对比度介于 Mocha 和 Frappe 之间）。Noctalia 内置的 Catppuccin 只有 Mocha（深）和
       # Latte（浅），所以用社区调色板：首次使用时从 api.noctalia.dev 下载并缓存到 ~/.local/state/noctalia/，
       # 此前或下载失败时临时回退到内置的 Noctalia 配色。想换回内置：source = "builtin"; builtin = "Catppuccin"。
-      # 可选的风味和强调色见 https://api.noctalia.dev/palettes（名字形如 "Catppuccin Frappe Mauve"）
+      # 可选的风味和强调色见 https://api.noctalia.dev/palettes（名字形如 "Catppuccin Macchiato Mauve"）
       theme = {
         source = "community";
-        community_palette = "Catppuccin Frappe Mauve";
+        community_palette = "Catppuccin Macchiato Mauve";
         mode = "dark";
       };
 

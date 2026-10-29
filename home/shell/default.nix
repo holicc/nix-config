@@ -62,8 +62,8 @@ in
     # 借鉴自 ryan4yin/nix-config
     extraConfig = ''
       # 把 ~/.local/bin 加进 PATH（自己装的工具常放在这里）
-      # 文件名配色：Catppuccin Frappe，全部是前景色，没有背景色块，补全菜单反色高亮时也看得清
-      $env.LS_COLORS = (vivid generate catppuccin-frappe | str trim)
+      # 文件名配色：Catppuccin Macchiato，全部是前景色，没有背景色块，补全菜单反色高亮时也看得清
+      $env.LS_COLORS = (vivid generate catppuccin-macchiato | str trim)
 
       use std/util "path add"
       path add "~/.local/bin"
@@ -136,7 +136,7 @@ in
   # Starship：提示符里显示 git 分支和状态、nix-shell 环境、命令耗时、上一条命令是否失败。
   # 跨 shell，这里同时在 bash 和 Nushell 里启用，所以不管用哪个都有同样的提示符。
   # 图标需要 Nerd Font：Alacritty 已设成 CaskaydiaCove Nerd Font（见 home/alacritty/default.nix）。
-  # 配色用 Catppuccin Frappe，与 Noctalia、Alacritty 保持一致
+  # 配色用 Catppuccin Macchiato，与 Noctalia、Alacritty 保持一致
   programs.starship = {
     enable = true;
     enableBashIntegration = true;
@@ -145,7 +145,7 @@ in
     settings = {
       add_newline = true;
       command_timeout = 500;
-      palette = "catppuccin_frappe";
+      palette = "catppuccin_macchiato";
 
       # 两行提示符：第一行是位置和状态，第二行只有输入符，命令再长也不会挤掉路径。
       # username / hostname 默认只在 SSH 登录时显示
@@ -195,34 +195,34 @@ in
         format = "[$hostname]($style) ";
       };
 
-      # Catppuccin Frappe 调色板，上面的 style 里用名字引用
-      palettes.catppuccin_frappe = {
-        rosewater = "#f2d5cf";
-        flamingo = "#eebebe";
-        pink = "#f4b8e4";
-        mauve = "#ca9ee6";
-        red = "#e78284";
-        maroon = "#ea999c";
-        peach = "#ef9f76";
-        yellow = "#e5c890";
-        green = "#a6d189";
-        teal = "#81c8be";
-        sky = "#99d1db";
-        sapphire = "#85c1dc";
-        blue = "#8caaee";
-        lavender = "#babbf1";
-        text = "#c6d0f5";
-        subtext1 = "#b5bfe2";
-        subtext0 = "#a5adce";
-        overlay2 = "#949cbb";
-        overlay1 = "#838ba7";
-        overlay0 = "#737994";
-        surface2 = "#626880";
-        surface1 = "#51576d";
-        surface0 = "#414559";
-        base = "#303446";
-        mantle = "#292c3c";
-        crust = "#232634";
+      # Catppuccin Macchiato 调色板，上面的 style 里用名字引用
+      palettes.catppuccin_macchiato = {
+        rosewater = "#f4dbd6";
+        flamingo = "#f0c6c6";
+        pink = "#f5bde6";
+        mauve = "#c6a0f6";
+        red = "#ed8796";
+        maroon = "#ee99a0";
+        peach = "#f5a97f";
+        yellow = "#eed49f";
+        green = "#a6da95";
+        teal = "#8bd5ca";
+        sky = "#91d7e3";
+        sapphire = "#7dc4e4";
+        blue = "#8aadf4";
+        lavender = "#b7bdf8";
+        text = "#cad3f5";
+        subtext1 = "#b8c0e0";
+        subtext0 = "#a5adcb";
+        overlay2 = "#939ab7";
+        overlay1 = "#8087a2";
+        overlay0 = "#6e738d";
+        surface2 = "#5b6078";
+        surface1 = "#494d64";
+        surface0 = "#363a4f";
+        base = "#24273a";
+        mantle = "#1e2030";
+        crust = "#181926";
       };
     };
   };

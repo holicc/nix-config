@@ -4,7 +4,7 @@ layout {
     gaps 8
     focus-ring {
         width 2
-        active-color "#ca9ee6"
+        active-color "#c6a0f6"
     }
     shadow {
         on
