@@ -11,5 +11,8 @@
 
     # Noto 无衬线中文字体：Nerd Fonts 不含中文，装它让中文显示统一、不依赖回退。
     noto-fonts-cjk-sans
+
+    # 彩色 emoji：没有它 emoji 会显示成方框
+    noto-fonts-color-emoji
   ];
 }
