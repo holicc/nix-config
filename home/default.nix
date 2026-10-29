@@ -4,7 +4,6 @@
 #   theme/    统一配色：catppuccin/nix（Macchiato），Alacritty、btop、bat 等自动套用
 #   alacritty/ 终端：字体、内边距、去标题栏（配色由 theme 提供）
 #   shell/    命令行环境：Nushell + Starship 提示符
-#   dev/      开发环境：git、命令行工具、语言工具链（目前为空，按需添加）
 # 由 flake.nix 以 NixOS 模块方式集成，`nixos-rebuild switch` 会一并应用系统配置和这里的用户配置
 { pkgs, ... }:
 {
@@ -14,7 +13,6 @@
     ./theme
     ./alacritty
     ./shell
-    ./dev
   ];
 
   # nx：把 ~/nixos-config/scripts/nixos.sh 放进 PATH，在任何目录都能直接 `nx switch`、`nx check`。
