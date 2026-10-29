@@ -82,6 +82,29 @@ in
           du $path | table --width 350
         }
       }
+
+      # nx（~/nixos-config/scripts/nixos.sh 的包装）的 Tab 补全：carapace 只认识它自带规格库里的命令，
+      # nx 是自己的脚本，所以在这里声明子命令。新增或改名子命令时同步修改下面的列表
+      def "nu-complete nx" [] {
+        [check build diff test boot switch update gens pkgs gc status proxy help]
+      }
+      def "nu-complete nx proxy" [] {
+        [init update on off status tun nodes use usage help]
+      }
+      def "nu-complete nx proxy tun" [] {
+        [on off]
+      }
+      extern "nx" [
+        command?: string@"nu-complete nx"
+        ...rest: string
+      ]
+      extern "nx proxy" [
+        sub?: string@"nu-complete nx proxy"
+        ...rest: string
+      ]
+      extern "nx proxy tun" [
+        state?: string@"nu-complete nx proxy tun"
+      ]
     '';
   };
 
