@@ -21,6 +21,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # 青简输入法源码（官方），固定在某个发布版 tag；flake = false：只要源码，不当 flake 用。
+    # 升级：改这里的 tag，再 `nx update qingjian`，细节见 nixos/modules/qingjian.nix
+    qingjian = {
+      url = "github:qingjian-team/qingjian/v0.3.1";
+      flake = false;
+    };
+
     # Catppuccin 统一配色：一处声明风味，Alacritty、btop、bat、fzf 等自动套用（见 home/theme）
     catppuccin = {
       url = "github:catppuccin/nix";

@@ -77,12 +77,30 @@
         "type": "github"
       }
     },
+    "qingjian": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792663815,
+        "narHash": "sha256-O7v38SYcDq2LbqJ6eLwaZFAGf4bxfwIHKyvMyVCH+hU=",
+        "owner": "qingjian-team",
+        "repo": "qingjian",
+        "rev": "53be80d5f88ed19347f6ba2a7af476626f4ce11d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "qingjian-team",
+        "ref": "v0.3.1",
+        "repo": "qingjian",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "catppuccin": "catppuccin",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
-        "noctalia": "noctalia"
+        "noctalia": "noctalia",
+        "qingjian": "qingjian"
       }
     }
   },
