@@ -13,7 +13,7 @@
     flavor = "mocha"; # latte / frappe / macchiato / mocha
     accent = "mauve"; # 和 Niri 聚焦环（#cba6f7）同一个紫色
 
-    # Starship 用 home/shell 里的 catppuccin-powerline 预设（自带调色板和布局），不让 catppuccin 的端口覆盖
+    # Starship 用 home/shell 里手写的两行布局和调色板，不让 catppuccin 的端口覆盖
     starship.enable = false;
   };
 }
