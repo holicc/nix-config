@@ -1,153 +1,71 @@
 # nixos-config
 
-`nixos-dev` 这台笔记本（NixOS 26.05，Ryzen 4000，AMD 核显）的 flake 配置。
-桌面：Niri（Wayland 合成器）+ Noctalia v5（桌面 Shell）+ greetd/tuigreet 登录，**续航优先**。
+`nixos-dev`（NixOS 26.05，Ryzen 4000 笔记本）的 flake 配置：Niri + Noctalia + greetd，续航优先。
 
 ## 目录结构
 
 ```
-nixos-config/
-├── flake.nix                  入口：inputs、nixosConfigurations.nixos-dev、home-manager 集成
-├── flake.lock
-├── nixos/                     系统入口：configuration.nix + hardware-configuration.nix
-├── modules/nixos/             系统级模块：base、power、niri、fonts
-├── home/                      用户级（home-manager）：default.nix + niri/ + noctalia/
-├── scripts/nixos.sh           维护脚本（构建、校验、对比、清理等）
-└── examples/                  rust-flake-template（Rust 的 nix develop 模板）、mihomo（代理配置模板，不含订阅）
+flake.nix  flake.lock      入口和版本锁
+nixos/                     系统级：configuration.nix（入口）、modules/（base、power、niri、fonts、mihomo、browser）
+home/                      用户级（home-manager）：niri、noctalia、alacritty、theme、shell、dev
+scripts/nixos.sh           维护脚本，装成 nx 命令
+examples/mihomo/           代理基础配置模板（不含订阅）
 ```
 
-每个目录有自己的 `README.md`，说明里面每个文件的作用。
+每个文件开头的注释说明它的作用和踩过的坑。
 
 ## 日常使用
 
-所有操作都通过脚本，它会自动处理 input 的来源（见下面"软件版本和 flake.lock"），并在构建前 `git add -A`。
-脚本通过 home-manager 装成了 `nx` 命令（见 `home/default.nix`），**在任何目录都能直接用**；
-也可以在仓库里用 `./scripts/nixos.sh` 代替 `nx`，两者完全等价：
+流程：改配置 → `nx check` → `nx diff` → `nx switch` → `git commit`。
 
-```bash
-nx check     # 只校验，不构建（改完配置先跑这个）
-nx diff      # 构建并对比软件包差异，无输出 = 包没变
-nx switch    # 校验后切换系统（需要 sudo 密码）
-nx help      # 全部命令
-```
+| 命令 | 作用 |
+|---|---|
+| `nx check` | 只校验，不构建 |
+| `nx diff` | 构建并对比软件包差异，无输出表示没变 |
+| `nx switch` | 校验后切换系统（需要 sudo）；`test` 不写开机项，`boot` 只设下次开机 |
+| `nx update [input]` | 更新 `flake.lock`，只改锁不构建；不满意 `git checkout flake.lock` |
+| `nx gens` / `nx gc` / `nx status` / `nx pkgs` | 系统版本 / 清理旧版本 / 状态 / 已装软件 |
 
-首次装上 `nx` 之前（还没 switch 过），请先用 `./scripts/nixos.sh switch`。
+`nx help` 看全部命令。直连 GitHub 很慢，`nx update` 前先开代理，并带上 `https_proxy=http://127.0.0.1:7890`。
 
-建议的流程：改配置，`check`，`diff`，确认无误后 `switch`，最后 `git commit`。
+## 代理（mihomo）
 
-## 软件版本和 flake.lock（重要）
+| 命令 | 作用 |
+|---|---|
+| `nx proxy init` | 粘贴订阅地址（输入不显示），生成配置 |
+| `nx proxy on` / `off` | 启动 / 停止（不随开机启动） |
+| `nx proxy nodes` / `use <编号>` | 查看 / 切换节点 |
+| `nx proxy usage` | 订阅流量用量和到期时间 |
+| `nx proxy update` | 订阅节点变了，重新下载 |
+| `nx proxy tun on` / `off` | 透明代理开关，默认开 |
 
-`nixpkgs`、`home-manager`、`noctalia` 这三个 input 的版本由 `flake.lock` 固定。脚本按锁的内容自动判断处于哪种模式：
+订阅地址和生成的配置在 `~/.config/mihomo/`，**绝不要提交**。
 
-| 模式 | 判断依据 | 行为 |
-|---|---|---|
-| **正式模式** | `flake.lock` 里有 `noctalia`（说明已用 `nx update` 生成过真正的锁） | 三个 input 固定到 GitHub 上的具体版本，不需要任何覆盖参数，也不需要本地源码副本 |
-| **过渡模式** | 锁还是模板自带的旧锁（没有 `noctalia`） | 这台机器直连 GitHub 很慢，所以用 `~/nix-inputs/` 里预先下载的源码副本做 `--override-input`，避免现下载 |
+## 窗口操作（Niri）
 
-**升级软件版本**（GitHub 直连很慢，建议先 `nx proxy on`，并给命令带上 `https_proxy=http://127.0.0.1:7890`；`nx update` 本身不碰代理）：
-
-```bash
-nx update          # 更新全部 input，写入 flake.lock；nx update nixpkgs 只更新 nixpkgs
-nx diff            # 预览软件包会怎么变
-nx switch          # 满意再切换
-```
-
-`nx update` 只改 `flake.lock`，不构建、不切换。不满意可以 `git checkout flake.lock` 退回上一个版本。**第一次跑 `nx update` 会生成正式的锁，之后就自动进入正式模式**，`~/nix-inputs/` 不再被使用，可以删除。
-
-**过渡模式下的注意事项**：
-- **不要删除 `~/nix-inputs/`**，否则下一次构建会失败，或回退去 GitHub 下载并可能版本不匹配。
-- **直接敲 `nix flake show`、`nixos-rebuild` 等命令会联网下载**，请用 `./scripts/nixos.sh`。
-- 当前系统和旧版本不依赖这些目录（源码已复制进 `/nix/store`），只是影响"再次构建"。
-
-**没有锁文件时的退路**：如果 `nx update` 之后新版本有问题，除了 `git checkout flake.lock`，也可以在开机菜单里选上一个系统版本回滚。
-
-## 代理（访问 GitHub 慢）
-
-这台机器访问 GitHub 很慢，装了 mihomo（Clash 内核）作为**按需启动**的代理服务，主要给 nix 和 git 用：
-
-```bash
-nx proxy init      # 按提示粘贴订阅地址（输入不显示），脚本下载订阅并生成配置
-nx proxy on        # 启动，本机代理端口 127.0.0.1:7890
-nx proxy nodes     # 查看节点；nx proxy use <编号> 切换
-nx proxy update    # 订阅节点变了，重新下载
-nx proxy off       # 停止（不用时不占电，服务不随开机启动）
-```
-
-- 配置 = 基础设置（`examples/mihomo/config.example.yaml`）+ 订阅自带的节点、节点组和规则。生成的 `~/.config/mihomo/config.yaml` 和订阅地址文件**在仓库外，绝不要提交**。
-- 透明代理（TUN）默认**开启**：`nx proxy on` 之后所有程序（含 nix、git）自动走代理，不用设置代理变量；想临时关掉 `nx proxy tun off`，不用重新构建。mihomo 不随开机启动，`nx proxy off` 停掉就完全不走代理。
-- TUN 在这台机器上踩过两个坑，都已处理并实测验证（都在 `modules/nixos/mihomo.nix`）：防火墙严格的反向路径过滤会丢掉 TUN 回包，导致系统 DNS 失效（设为 `loose`）；防火墙不放行从 TUN 网卡进来的新连接，导致 `mixed` 栈 TCP 连不上（把 `Meta` 设为受信任网卡）。**第一次开启时请保留一个已登录的 SSH 会话兜底**。
-- 没有安装 webui，管理都通过 `nx proxy`。详见 `scripts/README.md`。
-
-## 窗口操作速查（Niri）
-
-`Mod` 就是 Super（Windows 键）。Niri 把窗口按"列"排成一条横向滚动的带子，桌面（工作区）是上下排列的。完整定义在 `home/niri/keybindings.kdl`。
-
-**换桌面**
+`Mod` 是 Super 键。窗口按"列"排成横向滚动的带子，桌面（工作区）上下排列。完整定义在 `home/niri/keybindings.kdl`。
 
 | 操作 | 快捷键 |
 |---|---|
-| 切到第 N 个桌面 | `Mod+1` … `Mod+9` |
-| 上 / 下一个桌面 | `Mod+I` / `Mod+U`，或 `Mod+Page_Up` / `Page_Down` |
-| **把当前窗口移到第 N 个桌面** | `Mod+Ctrl+1` … `Mod+Ctrl+9` |
-| 把窗口移到上 / 下一个桌面 | `Mod+Ctrl+I` / `Mod+Ctrl+U` |
-| 调整桌面本身的顺序 | `Mod+Shift+I` / `Mod+Shift+U` |
-
-移动后你仍留在原桌面，想跟过去再按 `Mod+N` 切换。目标桌面没有窗口也可以，桌面是动态出现的。
-"移动"的单位是**列**：一列里叠放了多个窗口会整列一起走，想只移当前窗口，先按 `Mod+.` 把它从列里拆出来。
-
-**调整位置（同一桌面内）**
-
-| 操作 | 快捷键 |
-|---|---|
-| 焦点左 / 下 / 上 / 右 | `Mod+H/J/K/L`（或方向键） |
-| 窗口左 / 右移动 | `Mod+Ctrl+H` / `Mod+Ctrl+L` |
-| 窗口在列内上 / 下移动 | `Mod+Ctrl+K` / `Mod+Ctrl+J` |
-| 移到最左 / 最右 | `Mod+Ctrl+Home` / `Mod+Ctrl+End` |
-| 并进左 / 右边的列（上下叠放） | `Mod+[` / `Mod+]` |
-| 拆出成单独一列 | `Mod+.` |
-| 移到左 / 右边的显示器 | `Mod+Shift+Ctrl+H` / `Mod+Shift+Ctrl+L` |
-
-**大小和形态**
-
-| 操作 | 快捷键 |
-|---|---|
-| 切换预设宽度 / 微调宽度 | `Mod+R` / `Mod+-`、`Mod+=` |
-| 最大化当前列 / 全屏 | `Mod+F` / `Mod+Shift+F` |
-| 当前列居中 | `Mod+C` |
-| 浮动与平铺切换 | `Mod+V` |
+| 切到第 N 个桌面 | `Mod+1` … `9` |
+| **把当前窗口移到第 N 个桌面** | `Mod+Ctrl+1` … `9` |
+| 移到上 / 下一个桌面 | `Mod+Ctrl+I` / `Mod+Ctrl+U` |
+| 焦点移动 | `Mod+H/J/K/L` |
+| 窗口左右 / 上下移动 | `Mod+Ctrl+H/L` / `Mod+Ctrl+K/J` |
+| 并进左右的列 / 拆成单独一列 | `Mod+[` `Mod+]` / `Mod+.` |
+| 最大化列 / 全屏 / 浮动 | `Mod+F` / `Mod+Shift+F` / `Mod+V` |
 | 关闭窗口 | `Mod+Q` |
 
-## 软件与服务
-
-| 类别 | 内容 |
-|---|---|
-| 桌面 | Niri 26.04、Noctalia 5.4（Shell）、greetd + tuigreet、alacritty、grim + slurp |
-| 电源 | TLP（`power-profiles-daemon` 必须关闭，两者互斥）、UPower（电池显示） |
-| 连接 | NetworkManager、BlueZ（蓝牙，开机默认不上电以省电）、OpenSSH、mihomo（代理，按需启动） |
-| 字体 | CaskaydiaCove Nerd Font、Noto CJK 中文 |
-| 命令行 | Nushell + Starship 提示符（登录 shell 仍是 bash，输入 `nu` 进入 Nushell） |
-| 开发 | Rust 走项目级 `nix develop`，**不在系统全局安装**，模板见 `examples/rust-flake-template/flake.nix` |
-
-## 注意事项（踩过的坑）
-
-- **flake 只识别 git 已 track 的文件**：新增文件后要 `git add`（脚本会自动做）。
-- **`system.stateVersion` 保持 `"26.05"`**，不要因为升级 NixOS 版本而改动；`home.stateVersion` 同理。
-- **`/boot` 的挂载选项（`fmask=0077,dmask=0077`）改动后必须整机重启才生效**，`switch` 不会让 vfat 的选项真正生效。
-- **不要在 Live 安装环境里执行 `nixos-rebuild`**，那改的是 Live 环境自己，不会影响硬盘里的系统。
-- **Niri 26.04 比官方 main 分支的默认配置旧**：有些动作和语法（如 `toggle-touchpad`、单按 Mod 切总览）不支持，改快捷键后用 `check` 校验。
-- **Noctalia 选项名可能随上游变化**：v5 是 `programs.noctalia`，旧的 legacy-v4 分支是 `programs.noctalia-shell`。遇到 rebuild 报错先查 docs.noctalia.dev。
-- **没有自动挂起**：这台机器靠 SSH 管理，挂起会断开 SSH，所以空闲只锁屏和关屏。
+"移动"的单位是列：一列里叠了多个窗口会整列一起走，先 `Mod+.` 拆出来再移。
 
 ## 回滚
 
-每次 `switch` 都会生成新的系统版本，旧版本保留：
+每次 `switch` 都生成新的系统版本：开机时在 systemd-boot 菜单选上一个，或 `sudo nixos-rebuild switch --rollback`。
 
-- 开机时在 systemd-boot 菜单里选上一个版本；
-- 或 `sudo nixos-rebuild switch --rollback`；
-- `./scripts/nixos.sh gens` 查看全部版本，`./scripts/nixos.sh gc` 清理 7 天前的旧版本（清理后无法回滚到它们）。
+## 注意
 
-## 参考
-
-- [ryan4yin/nix-config](https://github.com/ryan4yin/nix-config)：目录结构、Noctalia 和 Niri 配置的主要参考
-- Noctalia 文档：docs.noctalia.dev
-- Niri 文档：yalter.github.io/niri
+- flake 只认 git 已 track 的文件，新增文件后要 `git add`（`nx` 会自动做）。
+- `system.stateVersion` 和 `home.stateVersion` 保持 `"26.05"`，不随升级改。
+- `/boot` 挂载选项改动后必须重启才生效。
+- Niri 26.04 的配置语法比官方 main 旧，改快捷键后先 `nx check`。
+- 没有自动挂起：这台机器靠 SSH 管理，挂起会断连。

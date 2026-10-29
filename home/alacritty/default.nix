@@ -12,7 +12,7 @@
     enable = true;
 
     settings = {
-      # 字体：Nerd Font 带 Starship 提示符、终端程序要用的图标字形（见 modules/nixos/fonts.nix）。
+      # 字体：Nerd Font 带 Starship 提示符、终端程序要用的图标字形（见 nixos/modules/fonts.nix）。
       # 字号受屏幕缩放（1.75）影响，Alacritty 会自动按缩放换算，12 在这块屏上大小合适
       font = {
         normal.family = "CaskaydiaCove Nerd Font";

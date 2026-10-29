@@ -124,7 +124,7 @@ in
   };
 
   # direnv + nix-direnv：进入带 flake.nix 的项目目录时自动加载它的开发环境（nix develop），
-  # 离开自动卸载。Rust 项目走项目级 flake（见 examples/rust-flake-template），
+  # 离开自动卸载。项目里可以放自己的 flake.nix 来固定该项目的工具版本，
   # 在项目里放一个 `.envrc`（内容 `use flake`）并执行一次 `direnv allow` 即可。
   # nix-direnv 会缓存环境，进入目录是瞬间的，也不会被 nix 垃圾回收清掉
   programs.direnv = {

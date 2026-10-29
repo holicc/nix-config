@@ -40,7 +40,7 @@ geox-url:
 # 用 `nx proxy off` 停掉就完全不走代理。
 # 实测：开启 TUN、用 Hysteria2 节点，不设任何代理变量连续 8 次访问 GitHub 全部成功，
 # 没有 mihomo 自己的 UDP 被路由回 TUN 的旁路回环（auto-detect-interface: true 起了作用）。
-# 在这台机器上排查出两个问题，都已处理并实测验证，都在 modules/nixos/mihomo.nix 里：
+# 在这台机器上排查出两个问题，都已处理并实测验证，都在 nixos/modules/mihomo.nix 里：
 #   1. DNS 失效：NixOS 防火墙的严格反向路径过滤丢掉 TUN 回包，
 #      处理：networking.firewall.checkReversePath = "loose"
 #   2. DNS 好了但 HTTPS 连不上：mixed / system 栈在 TUN 地址上开 TCP 监听，防火墙不放行从 Meta
@@ -49,10 +49,10 @@ geox-url:
 # 出问题时 `nx proxy tun off`；或 `nx proxy off` 整个停掉
 tun:
   enable: true
-  # 网卡名固定为 Meta：modules/nixos/mihomo.nix 里的防火墙 trustedInterfaces 按这个名字放行
+  # 网卡名固定为 Meta：nixos/modules/mihomo.nix 里的防火墙 trustedInterfaces 按这个名字放行
   device: Meta
   # mixed（TCP 走系统栈，UDP 走用户态）比 gvisor 省 CPU，已实测可用（system 也可用）。
-  # 它要求防火墙放行 Meta 网卡（modules/nixos/mihomo.nix 的 trustedInterfaces），否则 TCP 连不上；
+  # 它要求防火墙放行 Meta 网卡（nixos/modules/mihomo.nix 的 trustedInterfaces），否则 TCP 连不上；
   # 如果以后防火墙设置有变动导致 TCP 不通，临时改成 gvisor 可以绕开（用户态栈不经过本机输入链）
   stack: mixed
   auto-route: true

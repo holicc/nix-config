@@ -259,7 +259,7 @@ proxy_urlenc() {
 # 预先下载 geoip.metadb：订阅规则里的 GEOIP,CN 需要它。mihomo 启动时找不到会自己下载，
 # 但这台机器上下载很慢（8.4MB 实测 51 秒），超过它的 90 秒超时就整个服务起不来。
 # 所以在这里（用户态，超时宽松、自动重试）先下载好，服务启动前由 root 复制进它的状态目录
-# （见 modules/nixos/mihomo.nix 的 ExecStartPre）。下载地址取自基础设置里的 geox-url.mmdb
+# （见 nixos/modules/mihomo.nix 的 ExecStartPre）。下载地址取自基础设置里的 geox-url.mmdb
 PROXY_GEODB="${MIHOMO_GEODB:-$(dirname "$PROXY_CONF")/geoip.metadb}"
 proxy_fetch_geodata() {
   local url via=()

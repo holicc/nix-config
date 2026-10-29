@@ -6,7 +6,7 @@
   # 此选项名可能随上游更新变化，如遇报错请查阅 docs.noctalia.dev
   imports = [ inputs.noctalia.homeModules.default ];
 
-  # 电池组件已在 v5 默认状态栏里，前提是系统层开启 UPower（见 modules/nixos/power.nix）。
+  # 电池组件已在 v5 默认状态栏里，前提是系统层开启 UPower（见 nixos/modules/power.nix）。
   # 此选项名可能随上游更新变化，如遇报错请查阅 docs.noctalia.dev
   programs.noctalia = {
     enable = true;
@@ -17,7 +17,7 @@
       # 关闭首次启动向导：该向导（含隐私弹窗）会卡住启动，声明式部署不需要它
       shell.setup_wizard_enabled = false;
 
-      # 界面字体：需要系统已安装该字体（见 modules/nixos/fonts.nix），否则回退为默认字体。
+      # 界面字体：需要系统已安装该字体（见 nixos/modules/fonts.nix），否则回退为默认字体。
       # 字体名以 `fc-list` 查到的为准
       shell.font_family = "CaskaydiaCove Nerd Font";
 
