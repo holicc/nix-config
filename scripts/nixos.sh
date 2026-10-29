@@ -425,7 +425,37 @@ cmd_proxy() {
         || die "switching failed; check the exact name with: $(basename "$0") proxy nodes"
       ok "Switched $(proxy_group) to: ${name}"
       ;;
-    *) die "unknown proxy subcommand: ${sub} (init|update|on|off|status|tun|nodes|use; see: $(basename "$0") proxy help)" ;;
+    usage)
+      # 流量：机场订阅的总用量（订阅响应头 subscription-userinfo，和手机上看到的一致），
+      # 以及 mihomo 本次启动以来转发的流量（重启清零）。订阅地址只在本机读取，不会打印
+      [ -f "$PROXY_SUB_URL_FILE" ] || die "no saved subscription URL; run '$(basename "$0") proxy init' first"
+      local hdr info
+      hdr="$(curl -s -m 20 -D - -o /dev/null -A "$PROXY_UA" "$(head -1 "$PROXY_SUB_URL_FILE")" | tr -d '\r' || true)"
+      info="$(printf '%s\n' "$hdr" | grep -i '^subscription-userinfo:' | head -1 | cut -d: -f2- || true)"
+      if [ -n "$info" ]; then
+        say "Subscription quota"
+        printf '%s\n' "$info" | awk -F';' '
+          function hum(b) { split("B KiB MiB GiB TiB", u, " "); i = 1; while (b >= 1024 && i < 5) { b /= 1024; i++ } return sprintf("%.2f %s", b, u[i]) }
+          { for (k = 1; k <= NF; k++) { gsub(/ /, "", $k); split($k, kv, "="); v[kv[1]] = kv[2] } }
+          END {
+            used = v["upload"] + v["download"]; total = v["total"]
+            printf "   used      %s  (up %s / down %s)\n", hum(used), hum(v["upload"]), hum(v["download"])
+            if (total > 0) printf "   total     %s   remaining %s   (%.1f%% used)\n", hum(total), hum(total - used), used * 100 / total
+            if (v["expire"] > 0) { cmd = "date -d @" v["expire"] " +%Y-%m-%d"; cmd | getline d; close(cmd); printf "   expires   %s\n", d }
+          }'
+      else
+        warn "the subscription server did not return a quota header (subscription-userinfo); not all providers send it"
+      fi
+      if systemctl is-active --quiet mihomo; then
+        say "This mihomo run (resets when the service restarts)"
+        curl -s -m 5 "http://${PROXY_API}/connections" | grep -oE '"(downloadTotal|uploadTotal)":[0-9]+' | tr -d '"' | awk -F: '
+          function hum(b) { split("B KiB MiB GiB TiB", u, " "); i = 1; while (b >= 1024 && i < 5) { b /= 1024; i++ } return sprintf("%.2f %s", b, u[i]) }
+          { v[$1] = $2 } END { printf "   download  %s\n   upload    %s\n", hum(v["downloadTotal"]), hum(v["uploadTotal"]) }'
+      else
+        echo "   mihomo is not running, so no per-run counters"
+      fi
+      ;;
+    *) die "unknown proxy subcommand: ${sub} (init|update|on|off|status|tun|nodes|use|usage; see: $(basename "$0") proxy help)" ;;
   esac
 }
 
@@ -439,6 +469,7 @@ proxy_usage_lines() {
               tun on|off    toggle transparent proxy (TUN) at runtime, no rebuild needed
               nodes         list the members of the current node group (current one marked)
               use <n|name>  switch node by number (from "nodes") or by exact name
+              usage         subscription quota (used / total / expiry) and traffic since this mihomo run started
 EOF
 }
 
