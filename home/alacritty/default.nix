@@ -24,6 +24,17 @@
       # 想回到 bash 就在终端里输入 `bash`。Nushell 出问题时，`alacritty -e bash` 也能临时打开 bash
       terminal.shell.program = "nu";
 
+      # 鼠标右键 = 复制选中的文字。触摸板上双指轻点或双指按下就是右键（Niri 的 tap 设置），
+      # 所以"选中文字后双指点一下"即复制。Alacritty 默认的右键是"扩展选区"，这里覆盖掉了它。
+      # 粘贴：三指轻点（中键，粘贴最近选中的文字）或 Ctrl+Shift+V；
+      # 键盘复制仍是 Ctrl+Shift+C，Ctrl+C 保持"中断命令"
+      mouse.bindings = [
+        {
+          mouse = "Right";
+          action = "Copy";
+        }
+      ];
+
       window = {
         # 去掉 Alacritty 在 Wayland 下自带的备用标题栏：窗口只剩圆角、阴影和聚焦环，
         # 和 Niri 的 prefer-no-csd 方向一致。没有标题栏后用快捷键关闭（Mod+Q）
