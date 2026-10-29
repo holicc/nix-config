@@ -11,7 +11,8 @@ nixos/                      系统级（需要 root）
   modules/                  一个功能一个文件：base、power、niri、fonts、mihomo、browser
 home/                       用户级（home-manager）
   default.nix               入口，只写 imports
-  niri/ noctalia/ alacritty/ theme/ shell/    一个程序或用途一个目录
+  niri/ noctalia/ alacritty/ theme/ shell/ dev/    一个程序或用途一个目录
+    dev/lang/               语言工具链：go、rust、python、node
 scripts/nixos.sh            维护脚本，装成 nx 命令
 examples/mihomo/            代理基础配置模板（不含订阅）
 ```
@@ -24,8 +25,8 @@ examples/mihomo/            代理基础配置模板（不含订阅）
 2. **按"谁来管"选位置**：
    - 需要 root（系统服务、内核、防火墙、用户组）：`nixos/modules/<功能>.nix`，一个功能一个文件，在 `nixos/configuration.nix` 里加一行 import。
    - 用户级（程序配置、命令行工具）：`home/<程序或用途>/default.nix`，在 `home/default.nix` 里加 import。
-3. **开发环境**放 `home/dev/`，首次需要时再建，按用途一个文件：`git.nix`（用户配置）、`files.nix`（搜索、查看、数据处理）、`network.nix`（网络调试）、`container.nix`（容器和 Kubernetes 客户端）、`build.nix`（构建和任务运行）、`default.nix`（汇总 import）。
-4. **语言工具链**全局安装，放 `home/dev/lang/<语言>.nix`，一种语言一个文件（Rust、Go、Node、Python）；版本跟随 nixpkgs，项目里的 `flake.nix` 可以覆盖。
+3. **开发环境**放 `home/dev/`，已有 `lang/`；其余按用途一个文件，首次需要时再建：`git.nix`（用户配置）、`files.nix`（搜索、查看、数据处理）、`network.nix`（网络调试）、`container.nix`（容器和 Kubernetes 客户端）、`build.nix`（构建和任务运行）、`default.nix`（汇总 import）。
+4. **语言工具链**全局安装，放 `home/dev/lang/<语言>.nix`，一种语言一个文件（已有 Go、Rust、Python、Node）；版本跟随 nixpkgs，项目里的 `flake.nix` 可以覆盖。
 5. **容器**：守护进程和用户组属系统级，放 `nixos/modules/container.nix`；命令行客户端放 `home/dev/container.nix`。
 6. **git 本体留在 `nixos/modules/base.nix`**：`sudo nixos-rebuild` 以 root 运行，需要 root 的 PATH 里有 git 才能读取 flake。
 7. 新增文件开头写一段职责注释；位置有变化时同步更新本 README。
