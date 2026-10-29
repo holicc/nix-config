@@ -8,7 +8,7 @@
 flake.nix  flake.lock       入口和版本锁
 nixos/                      系统级（需要 root）
   configuration.nix         入口，只写 imports
-  modules/                  一个功能一个文件：base、power、niri、fonts、mihomo、browser、input-method、nix-ld
+  modules/                  一个功能一个文件：base、power、niri、fonts、mihomo、browser、input-method、qingjian、nix-ld
 home/                       用户级（home-manager）
   default.nix               入口，只写 imports
   niri/ noctalia/ alacritty/ theme/ shell/ dev/    一个程序或用途一个目录

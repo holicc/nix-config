@@ -16,6 +16,7 @@
     ./modules/fonts.nix  # 字体：Nerd Font + 中文
     ./modules/browser.nix # 浏览器：Google Chrome（unfree，需代理预下载）
     ./modules/input-method.nix # 中文输入法：Fcitx5 + 拼音
+    ./modules/qingjian.nix # 青简输入法：Fcitx5 插件 + 资源 + server 服务（server 手动编译）
     ./modules/nix-ld.nix # 运行预编译二进制（rustup 下载的 Rust 工具链需要）
     ./modules/mihomo.nix # 代理：mihomo（Clash 内核），按需启动，nix/git 访问 GitHub 用
   ];
