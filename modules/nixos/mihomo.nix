@@ -12,7 +12,7 @@
     configFile = "/home/joe/.config/mihomo/config.yaml";
 
     # 只授予 TUN 所需的权限，TUN 是否开启由配置文件里的 tun.enable 决定
-    # （基础设置里默认关闭，因为在这台机器上开启后系统 DNS 会失效、原因还在排查；
+    # （基础设置里默认开启；下面两项防火墙设置是它能正常工作的前提。
     # 用 `nx proxy tun on|off` 在运行时切换，不用重新构建）。
     # 排查方向：开启后用 `ip addr` 应能看到 Meta 网卡；权限不足时看 `journalctl -u mihomo`
     tunMode = true;

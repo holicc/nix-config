@@ -74,7 +74,7 @@ nx proxy off       # 停止（不用时不占电，服务不随开机启动）
 ```
 
 - 配置 = 基础设置（`examples/mihomo/config.example.yaml`）+ 订阅自带的节点、节点组和规则。生成的 `~/.config/mihomo/config.yaml` 和订阅地址文件**在仓库外，绝不要提交**。
-- 透明代理（TUN）默认**关闭**（更省电），需要全局代理时 `nx proxy tun on`，用完 `nx proxy tun off`，不需要重新构建。TUN 关闭时，程序要设置 `https_proxy=http://127.0.0.1:7890` 才走代理。
+- 透明代理（TUN）默认**开启**：`nx proxy on` 之后所有程序（含 nix、git）自动走代理，不用设置代理变量；想临时关掉 `nx proxy tun off`，不用重新构建。mihomo 不随开机启动，`nx proxy off` 停掉就完全不走代理。
 - TUN 在这台机器上踩过两个坑，都已处理并实测验证（都在 `modules/nixos/mihomo.nix`）：防火墙严格的反向路径过滤会丢掉 TUN 回包，导致系统 DNS 失效（设为 `loose`）；防火墙不放行从 TUN 网卡进来的新连接，导致 `mixed` 栈 TCP 连不上（把 `Meta` 设为受信任网卡）。**第一次开启时请保留一个已登录的 SSH 会话兜底**。
 - 没有安装 webui，管理都通过 `nx proxy`。详见 `scripts/README.md`。
 

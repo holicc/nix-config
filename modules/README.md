@@ -8,6 +8,7 @@
 | `nixos/power.nix` | TLP、关闭 power-profiles-daemon、UPower | TLP 开箱即用的省电策略；两个电源守护进程互斥；UPower 给桌面提供电池电量 |
 | `nixos/niri.nix` | Niri、greetd + tuigreet、alacritty、grim、slurp | Wayland 原生、占用小；tuigreet 是文本登录界面，不依赖 GTK/Qt，更省电 |
 | `nixos/fonts.nix` | CaskaydiaCove Nerd Font、Noto CJK 中文 | Nerd Font 提供图标字形；Nerd Fonts 不含中文，所以补装 Noto |
+| `nixos/browser.nix` | Google Chrome（unfree，只放行名单里的包），带 `--ozone-platform-hint=auto` 在 Wayland 下用原生渲染 | 安装包来自 dl.google.com，由 nix-daemon 下载，daemon 不走 shell 的代理，这台机器直连又不通，所以**安装或升级 Chrome 版本前要先用代理预下载进 store**：`nx proxy on` 后执行 `https_proxy=http://127.0.0.1:7890 nix-prefetch-url --name google-chrome-stable_<版本>-1_amd64.deb https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_<版本>-1_amd64.deb`，版本号以 `nix eval` 出来的 `google-chrome.version` 为准，再 `nx switch` |
 | `nixos/mihomo.nix` | mihomo 代理服务（Clash 内核）：不随开机启动、授予 TUN 权限、配置文件放仓库外；并调整防火墙让 TUN 可用：反向路径过滤放宽为 `loose`（否则系统 DNS 失效）、把 TUN 网卡 `Meta` 设为受信任网卡（否则 TCP 连不上），两项都已实测验证 | 访问 GitHub 慢，nix 和 git 需要代理；按需启动不占电；订阅地址是敏感信息，不进仓库；不装 webui，用脚本切换 TUN |
 
 ## 新增模块的步骤

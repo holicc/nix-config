@@ -365,7 +365,7 @@ cmd_proxy() {
       sudo systemctl start mihomo
       ok "mihomo started 🚀"
       echo "   Local HTTP/SOCKS proxy: http://127.0.0.1:${PROXY_PORT}  (e.g. https_proxy=http://127.0.0.1:${PROXY_PORT} git push)"
-      echo "   TUN (transparent proxy) is off by default; try: $(basename "$0") proxy tun on   (undo: proxy tun off)"
+      echo "   TUN (transparent proxy) is on by default, so every program goes through it; turn it off with: $(basename "$0") proxy tun off"
       echo "   First start downloads geoip.metadb from the mirror; if it does not come up, see: journalctl -u mihomo -b"
       ;;
     off)

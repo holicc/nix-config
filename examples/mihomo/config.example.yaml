@@ -8,8 +8,8 @@
 #
 # 文档：https://wiki.metacubex.one/
 
-# 本机代理端口（HTTP + SOCKS5 混合）。TUN 关闭时，程序要自己配置
-# https_proxy=http://127.0.0.1:7890 才会走代理
+# 本机代理端口（HTTP + SOCKS5 混合）。TUN 开启（默认）时所有程序自动走代理，不用设置；
+# TUN 关闭时，程序要自己配置 https_proxy=http://127.0.0.1:7890 才会走代理
 mixed-port: 7890
 allow-lan: false          # 不对局域网开放，只给本机用
 mode: rule
@@ -35,16 +35,20 @@ geox-url:
   geosite: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
   asn: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb"
 
-# 透明代理（TUN）：默认关闭（更省电）；需要全局代理时 `nx proxy tun on`，用完 `nx proxy tun off`。
+# 透明代理（TUN）：默认开启，mihomo 一启动就是全局代理（含 nix-daemon、git 等），不用逐个设置代理变量；
+# 想临时关掉用 `nx proxy tun off`（再开 `nx proxy tun on`）。mihomo 本身不随开机启动，
+# 用 `nx proxy off` 停掉就完全不走代理。
+# 实测：开启 TUN、用 Hysteria2 节点，不设任何代理变量连续 8 次访问 GitHub 全部成功，
+# 没有 mihomo 自己的 UDP 被路由回 TUN 的旁路回环（auto-detect-interface: true 起了作用）。
 # 在这台机器上排查出两个问题，都已处理并实测验证，都在 modules/nixos/mihomo.nix 里：
 #   1. DNS 失效：NixOS 防火墙的严格反向路径过滤丢掉 TUN 回包，
 #      处理：networking.firewall.checkReversePath = "loose"
 #   2. DNS 好了但 HTTPS 连不上：mixed / system 栈在 TUN 地址上开 TCP 监听，防火墙不放行从 Meta
 #      网卡进来的新连接，TCP 被丢弃；处理：networking.firewall.trustedInterfaces = [ "Meta" ]
 #      （实测：国内镜像直连约 0.3 秒，GitHub 走代理约 50KB/s）
-# 第一次开启时请保留一个已登录的 SSH 会话兜底，出问题 `nx proxy tun off`
+# 出问题时 `nx proxy tun off`；或 `nx proxy off` 整个停掉
 tun:
-  enable: false
+  enable: true
   # 网卡名固定为 Meta：modules/nixos/mihomo.nix 里的防火墙 trustedInterfaces 按这个名字放行
   device: Meta
   # mixed（TCP 走系统栈，UDP 走用户态）比 gvisor 省 CPU，已实测可用（system 也可用）。
