@@ -3,7 +3,8 @@
 # 刻意不把 Nushell 设为登录 shell（users.users.joe.shell）：
 #   登录 shell 仍是 bash。SSH 登录和各种脚本、教程里的命令都按 bash/POSIX 语法写，
 #   Nushell 不兼容这些语法，设成登录 shell 会让 `ssh 主机 'bash 命令'` 这类用法全部出错。
-#   想用 Nushell 时在终端里输入 `nu` 即可；之后想让 Alacritty 默认启动 nu，再单独配置。
+#   桌面上的 Alacritty 直接启动 nu（见 home/alacritty/default.nix 的 terminal.shell）；
+#   SSH 登录进去还是 bash，想用 Nushell 时输入 `nu`。
 { ... }:
 let
   # Nerd Font 图标是私有区字符，直接写进源文件容易在复制、编辑时丢失，
@@ -76,6 +77,34 @@ in
       }
     '';
   };
+
+  # 下面几个小工具都自带 Nushell 集成，home-manager 会把初始化代码写进 config.nu。
+
+  # zoxide：记住常去的目录，`z 关键字` 直接跳过去，`zi` 交互式选择。用得越多越准
+  programs.zoxide = {
+    enable = true;
+    enableNushellIntegration = true;
+  };
+
+  # carapace：给 git、cargo、kubectl、nix 等外部命令提供子命令和参数补全，
+  # Nushell 自带的补全只覆盖路径和内部命令
+  programs.carapace = {
+    enable = true;
+    enableNushellIntegration = true;
+  };
+
+  # direnv + nix-direnv：进入带 flake.nix 的项目目录时自动加载它的开发环境（nix develop），
+  # 离开自动卸载。Rust 项目走项目级 flake（见 examples/rust-flake-template），
+  # 在项目里放一个 `.envrc`（内容 `use flake`）并执行一次 `direnv allow` 即可。
+  # nix-direnv 会缓存环境，进入目录是瞬间的，也不会被 nix 垃圾回收清掉
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+    enableNushellIntegration = true;
+  };
+
+  # bat：带语法高亮和行号的 cat。配色由 home/theme（catppuccin）自动提供
+  programs.bat.enable = true;
 
   # Starship：提示符里显示 git 分支和状态、nix-shell 环境、命令耗时、上一条命令是否失败。
   # 跨 shell，这里同时在 bash 和 Nushell 里启用，所以不管用哪个都有同样的提示符。
