@@ -19,6 +19,11 @@
         size = 12;
       };
 
+      # 终端里直接启动 Nushell（Starship 提示符只接在 Nushell 上）。
+      # 登录 shell 和 SSH 仍是 bash，所以远程管理、脚本都不受影响；
+      # 想回到 bash 就在终端里输入 `bash`。Nushell 出问题时，`alacritty -e bash` 也能临时打开 bash
+      terminal.shell.program = "nu";
+
       window = {
         # 去掉 Alacritty 在 Wayland 下自带的备用标题栏：窗口只剩圆角、阴影和聚焦环，
         # 和 Niri 的 prefer-no-csd 方向一致。没有标题栏后用快捷键关闭（Mod+Q）
