@@ -11,7 +11,8 @@ nixos/                      系统级（需要 root）
   modules/                  一个功能一个文件：base、power、niri、fonts、mihomo、browser、input-method、qingjian、nix-ld
 home/                       用户级（home-manager）
   default.nix               入口，只写 imports
-  niri/ noctalia/ alacritty/ theme/ shell/ dev/    一个程序或用途一个目录
+  niri/ noctalia/ alacritty/ emacs/ theme/ shell/ dev/    一个程序或用途一个目录
+    emacs/init.el           Emacs 配置，软链到 ~/.config/emacs，改了重启 Emacs 即生效（不用 switch）
     dev/git.nix             gh
     dev/build.nix           gcc（提供 cc）
     dev/files.nix           rg、fd、jq、tree、file、unzip、zip、7zz

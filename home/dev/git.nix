@@ -8,6 +8,18 @@
     pkgs.gh
   ];
 
+  # git 用户身份：home-manager 写到 ~/.config/git/config。
+  # 和 `gh auth setup-git` 写的 ~/.gitconfig（GitHub 凭据）并存：git 两个都读，互不冲突。
+  # 邮箱会公开在提交记录里（推送到 GitHub 后）；想隐藏改用 GitHub 提供的 noreply 邮箱。
+  # 注意：本仓库之前的提交作者是 joe <joe@nixos-dev>，从现在起新提交会用下面这个身份。
+  programs.git = {
+    enable = true;
+    settings.user = {
+      name = "joe";
+      email = "longshan.lu@longbridge-inc.com";
+    };
+  };
+
   # git 短命令：home.shellAliases 对 bash 和 nushell 都生效。
   # 注意 nushell 里用 `;` 连接命令，不支持 `&&`：gaa; gcm "说明"; gp
   home.shellAliases = {

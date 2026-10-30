@@ -3,6 +3,7 @@
 #   noctalia/ 桌面 Shell Noctalia v5：状态栏、启动器、通知、主题等设置
 #   theme/    统一配色：catppuccin/nix（Macchiato），Alacritty、btop、bat 等自动套用
 #   alacritty/ 终端：字体、内边距、去标题栏（配色由 theme 提供）
+#   emacs/    Emacs（Neomacs）配置：init.el 以可编辑软链放到 ~/.config/emacs
 #   shell/    命令行环境：Nushell + Starship 提示符
 #   dev/      开发环境：gh、gcc、语言工具链（Go、Rust、Python、Node.js）
 # 由 flake.nix 以 NixOS 模块方式集成，`nixos-rebuild switch` 会一并应用系统配置和这里的用户配置
@@ -13,6 +14,7 @@
     ./noctalia
     ./theme
     ./alacritty
+    ./emacs
     ./shell
     ./dev
   ];
