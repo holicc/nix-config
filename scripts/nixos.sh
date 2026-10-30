@@ -33,7 +33,7 @@ COMMANDS=(
   "test|Check, then activate now without a boot entry; reverts on reboot (sudo)"
   "boot|Check, then use on next boot without activating now (sudo)"
   "switch|Check, build and activate now; also used on next boot (sudo)"
-  "update|Update flake inputs into flake.lock (all, or name them: update nixpkgs); no build or switch, preview with: diff"
+  "update|Update flake inputs into flake.lock (all, or name them: update nixpkgs); "update qingjian" also moves to the latest release; no build or switch, preview with: diff"
   "gens|List all system generations (rollback targets)"
   "pkgs|List installed packages and fonts"
   "gc|Keep only the newest ${KEEP_GENERATIONS} system generations and reclaim space (sudo)"

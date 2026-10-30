@@ -11,11 +11,11 @@
 # 直接读该版本源码里的 tools/release/data.lock，所以升级时没有任何哈希要手改。
 #
 # 升级到新版本：
-#   1. 改 flake.nix 里 `qingjian` input 的 tag（如 v0.3.1 改成 v0.3.2）；
-#   2. nx update qingjian        只更新这一个 input，写进 flake.lock
-#   3. nx switch                 插件、资源、server 全部换成新版本（编译 server 约 6 分钟，
+#   1. nx update qingjian        查 GitHub 上最新的发布版，把 flake.nix 里 `qingjian` input 的 tag
+#                                改成它，并写进 flake.lock（要代理就带上 https_proxy）
+#   2. nx switch                 插件、资源、server 全部换成新版本（编译 server 约 6 分钟，
 #                                可以先 nx diff 预编译）
-#   4. fcitx5 -r                 重启 Fcitx5，加载新插件
+#   3. fcitx5 -r                 重启 Fcitx5，加载新插件
 # 旧版本的源码、数据包、server 留在 /nix/store，要等 `nx gc` 才释放。
 #
 # 首次启用后：注销再登录；在 Fcitx5 配置里取消"仅显示当前语言"，添加"青简"。

@@ -62,24 +62,46 @@ cmd_test()   { rebuild test; }
 cmd_boot()   { rebuild boot; }
 cmd_switch() { rebuild switch; }
 
+# 青简源码是固定在发布版 tag 上的 flake input（flake.nix 里的 github:仓库/tag）。
+# 明确写 `nx update qingjian` 时，先查 GitHub 上最新的发布版，把 flake.nix 里的 tag 改成它，
+# 再更新锁；不带参数的全量更新不动这个 tag，避免一次升级带上意外的新版本
+QINGJIAN_REPO="qingjian-team/qingjian"
+bump_qingjian_tag() {
+  local latest current
+  latest="$(curl -fsSL -m 20 "https://api.github.com/repos/${QINGJIAN_REPO}/releases/latest" \
+    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)" || true
+  [ -n "$latest" ] || die "could not look up the latest ${QINGJIAN_REPO} release (GitHub unreachable? try: https_proxy=http://127.0.0.1:7890 ${PROG} update qingjian)"
+  current="$(sed -n "s#.*github:${QINGJIAN_REPO}/\([^\"]*\)\".*#\1#p" flake.nix | head -1)"
+  [ -n "$current" ] || die "no github:${QINGJIAN_REPO}/<tag> input found in flake.nix"
+  if [ "$latest" = "$current" ]; then
+    ok "qingjian is already on the latest release (${latest})"
+  else
+    sed -i "s#github:${QINGJIAN_REPO}/${current}\"#github:${QINGJIAN_REPO}/${latest}\"#" flake.nix
+    ok "qingjian release: ${current} -> ${latest} (flake.nix)"
+  fi
+}
+
 # 升级 flake 的 input 并写入 flake.lock。
 # 用法：nx update [input...]，不带参数更新全部，如 `nx update nixpkgs` 只更新 nixpkgs。
-# 只改 flake.lock，不构建、不切换：之后 `nx diff` 预览软件包变化，满意再 `nx switch`，
-# 不满意可以 `git checkout flake.lock` 退回上一个版本。
+# 只改 flake.lock（青简会同时改 flake.nix 里的 tag），不构建、不切换：之后 `nx diff` 预览软件包变化，
+# 满意再 `nx switch`，不满意可以 `git checkout flake.lock flake.nix` 退回上一个版本。
 # 直连 GitHub 很慢，需要代理时自己带环境变量：https_proxy=http://127.0.0.1:7890 nx update
 cmd_update() {
   stage
-  local before after
-  before="$(sha256sum flake.lock 2>/dev/null | cut -d' ' -f1 || true)"
+  local before after arg
+  for arg in "$@"; do
+    if [ "$arg" = qingjian ]; then bump_qingjian_tag; fi
+  done
+  before="$(cat flake.lock flake.nix | sha256sum | cut -d' ' -f1)"
   say "Updating flake inputs (nixpkgs is ~45 MB; this can take several minutes)"
   nix flake update "$@"
-  after="$(sha256sum flake.lock | cut -d' ' -f1)"
+  after="$(cat flake.lock flake.nix | sha256sum | cut -d' ' -f1)"
   if [ "$before" = "$after" ]; then
     ok "flake.lock is already up to date"
   else
     ok "flake.lock updated"
-    echo "   Review:  git diff flake.lock"
-    echo "   Preview: ${PROG} diff      Apply: ${PROG} switch      Undo: git checkout flake.lock"
+    echo "   Review:  git diff flake.nix flake.lock"
+    echo "   Preview: ${PROG} diff      Apply: ${PROG} switch      Undo: git checkout flake.nix flake.lock"
   fi
 }
 
