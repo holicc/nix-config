@@ -8,6 +8,11 @@
     # 主软件源：跟随 26.05 稳定分支，保证系统稳定
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
+    # 不稳定分支：只给个别需要新版本的软件用（目前是 nushell，见 home/shell），
+    # 其余一律用上面的稳定分支。刻意不让别的 input 跟随它，避免整套系统被带着升级。
+    # 单独升级：nx update nixpkgs-unstable
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     # home-manager：管理 joe 用户级配置，分支必须与 nixpkgs 版本匹配
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
@@ -22,7 +27,7 @@
     };
 
     # 青简输入法源码（官方），固定在某个发布版 tag；flake = false：只要源码，不当 flake 用。
-    # 升级：改这里的 tag，再 `nx update qingjian`，细节见 nixos/modules/qingjian.nix
+    # 升级：`nx update qingjian` 会自动把这里的 tag 改成最新发布版，细节见 nixos/modules/qingjian.nix
     qingjian = {
       url = "github:qingjian-team/qingjian/v0.3.1";
       flake = false;

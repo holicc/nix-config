@@ -5,7 +5,7 @@
 #   Nushell 不兼容这些语法，设成登录 shell 会让 `ssh 主机 'bash 命令'` 这类用法全部出错。
 #   桌面上的 Alacritty 直接启动 nu（见 home/alacritty/default.nix 的 terminal.shell）；
 #   SSH 登录进去还是 bash，想用 Nushell 时输入 `nu`。
-{ ... }:
+{ inputs, pkgs, ... }:
 let
   # Nerd Font 图标是私有区字符，直接写进源文件容易在复制、编辑时丢失，
   # 所以用 JSON 的 \u 转义按码点生成（Nix 字符串本身不支持 \u 转义）
@@ -18,10 +18,31 @@ in
   programs.nushell = {
     enable = true;
 
+    # 用 unstable 的 nushell：稳定分支的 0.112 缺少补全菜单的 MenuAccept 事件（空格直接确认候选）。
+    # 回到稳定分支版本：删掉这一行；升级它：nx update nixpkgs-unstable
+    package = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.nushell;
+
     # 会写成 config.nu 里的 $env.config
     settings = {
       # 不显示启动欢迎语
       show_banner = false;
+
+      # 补全菜单里按空格 = 确认高亮的候选（不用回车），没有菜单时就是普通空格，和 zsh 的手感一致。
+      # menuaccept 是 reedline 新增的事件（nushell 0.116 才有，所以 shell 用的是 unstable 版）；
+      # event 写成列表表示依次执行：先尝试确认菜单项（没菜单时无效果），再插入空格。
+      # 排查方向：`keybindings list` 能看到可用事件；报未知事件说明 nushell 版本太旧
+      keybindings = [
+        {
+          name = "space_accepts_menu";
+          modifier = "none";
+          keycode = "space";
+          mode = [ "emacs" "vi_insert" ];
+          event = [
+            { send = "menuaccept"; }
+            { edit = "insertchar"; value = " "; }
+          ];
+        }
+      ];
 
       # 补全：模糊匹配、不区分大小写，输入几个字母就能补出路径和命令
       completions = {
@@ -88,7 +109,7 @@ in
         [check build diff test boot switch update gens pkgs gc status proxy help]
       }
       def "nu-complete nx proxy" [] {
-        [init update on off status tun nodes use usage help]
+        [add list switch rm update on off status tun nodes use usage help]
       }
       def "nu-complete nx proxy tun" [] {
         [on off]

@@ -4,6 +4,7 @@
 #   files.nix 文件搜索、查看和压缩（rg、fd、jq、tree、file、zip 系列）
 #   system.nix 系统监控和剪贴板（btop、lsof、wl-clipboard）
 #   network.nix 网络调试（dig）
+#   claude.nix Claude Code（来自 unstable）
 #   lang/    语言工具链，全局安装，每种语言一个文件
 { ... }:
 {
@@ -13,6 +14,7 @@
     ./files.nix
     ./system.nix
     ./network.nix
+    ./claude.nix
     ./lang
   ];
 }

@@ -17,6 +17,7 @@ home/                       用户级（home-manager）
     dev/files.nix           rg、fd、jq、tree、file、unzip、zip、7zz
     dev/system.nix          btop、lsof、wl-clipboard
     dev/network.nix         dig（dnsutils）
+    dev/claude.nix          Claude Code（unstable）
     dev/lang/               语言工具链：go、rust（rustup）、python、node
 scripts/                    维护脚本，nixos.sh 装成 nx 命令（入口只做分发，实现按职责放在 lib/ 下）
 examples/mihomo/            代理基础配置模板（不含订阅）
@@ -45,7 +46,7 @@ examples/mihomo/            代理基础配置模板（不含订阅）
 | `nx check` | 只校验，不构建 |
 | `nx diff` | 构建并对比软件包差异，无输出表示没变 |
 | `nx switch` | 校验后切换系统（需要 sudo）；`test` 不写开机项，`boot` 只设下次开机 |
-| `nx update [input]` | 更新 `flake.lock`，只改锁不构建；不满意 `git checkout flake.lock` |
+| `nx update [input]` | 更新 `flake.lock`，只改锁不构建；不满意 `git checkout flake.lock`。`nx update qingjian` 会先把 flake.nix 里的 tag 升到最新发布版 |
 | `nx gens` / `nx gc` / `nx status` / `nx pkgs` | 系统版本 / 只保留最新 5 个版本并回收空间 / 状态 / 已装软件 |
 
 `nx help` 看全部命令。直连 GitHub 很慢，`nx update` 前先开代理，并带上 `https_proxy=http://127.0.0.1:7890`。
@@ -54,11 +55,12 @@ examples/mihomo/            代理基础配置模板（不含订阅）
 
 | 命令 | 作用 |
 |---|---|
-| `nx proxy init` | 粘贴订阅地址（输入不显示），生成配置 |
+| `nx proxy add <名字> [文件]` | 新增配置：给文件就导入，不给就粘贴订阅地址（输入不显示） |
+| `nx proxy list` / `switch <名字>` / `rm <名字>` | 查看 / 切换 / 删除配置，切换时 mihomo 在运行会自动重启 |
 | `nx proxy on` / `off` | 启动 / 停止（不随开机启动） |
 | `nx proxy nodes` / `use <编号>` | 查看 / 切换节点 |
 | `nx proxy usage` | 订阅流量用量和到期时间 |
-| `nx proxy update` | 订阅节点变了，重新下载 |
+| `nx proxy update [名字]` | 订阅节点变了，重新下载（默认当前配置） |
 | `nx proxy tun on` / `off` | 透明代理开关，默认开 |
 
 订阅地址和生成的配置在 `~/.config/mihomo/`，**绝不要提交**。

@@ -7,4 +7,17 @@
     # 只装命令本体，不启用 programs.gh，那个选项默认会改写 git 的凭据配置
     pkgs.gh
   ];
+
+  # git 短命令：home.shellAliases 对 bash 和 nushell 都生效。
+  # 注意 nushell 里用 `;` 连接命令，不支持 `&&`：gaa; gcm "说明"; gp
+  home.shellAliases = {
+    gst = "git status -sb";
+    ga = "git add";
+    gaa = "git add -A";
+    gcm = "git commit -m";
+    gp = "git push";
+    gpl = "git pull";
+    gd = "git diff";
+    glo = "git log --oneline -10";
+  };
 }
