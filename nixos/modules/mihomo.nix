@@ -8,7 +8,7 @@
     # 配置文件里有订阅地址，属于敏感信息：放在仓库外面，这里只写路径，不进 GitHub。
     # 必须写成字符串，不能写成 Nix 路径字面量（/home/... 不带引号）：
     # 路径字面量会被复制进 /nix/store，那里所有用户可读，等于泄露订阅。
-    # 首次使用：nx proxy init，按提示粘贴订阅地址，脚本会下载订阅并生成这个文件
+    # 首次使用：nx proxy add <名字> [配置文件]；这个路径是软链接，指向当前启用的配置（~/.config/mihomo/profiles/<名字>/config.yaml），nx proxy switch 切换
     configFile = "/home/joe/.config/mihomo/config.yaml";
 
     # 只授予 TUN 所需的权限，TUN 是否开启由配置文件里的 tun.enable 决定
@@ -43,7 +43,7 @@
   # 启动前把预先下载好的 geoip.metadb 复制进 mihomo 的状态目录。
   # 背景：订阅规则里的 GEOIP,CN 需要这个数据库，mihomo 启动时找不到会自己下载，而这台机器上
   # 下载很慢（实测 8.4MB 用了 51 秒），超过它的 90 秒超时就会 fatal 退出，服务整个起不来。
-  # 所以由 `nx proxy init/update` 在用户态预先下载到 ~/.config/mihomo/geoip.metadb（超时宽松、可重试），
+  # 所以由 `nx proxy add/update` 在用户态预先下载到 ~/.config/mihomo/geoip.metadb（超时宽松、可重试），
   # 这里在启动前复制过去。
   # ExecStartPre 的前缀：`-` 表示复制失败（比如文件还没下载）也不阻止启动，退回到 mihomo 自己下载；
   # `+` 表示以完整权限运行，不受该服务 ProtectHome 等沙箱限制（否则读不到 /home 下的文件）。

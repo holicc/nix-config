@@ -2,26 +2,33 @@
 # 每个子命令是一个 pcmd_<名字> 函数，名字和说明登记在下面的 PROXY_COMMANDS 表里；
 # proxy_ 开头的是内部辅助函数。由 nixos.sh source 进来，不单独运行。
 #
-# 订阅地址属于敏感信息，配置放在仓库外的 PROXY_CONF，不进 git；
-# 脚本负责下载订阅、拼装配置、启停、切换 TUN 和节点。
+# 订阅地址属于敏感信息，配置放在仓库外的 PROXY_DIR，不进 git；
+# 脚本负责下载订阅、拼装配置、多配置切换、启停、切换 TUN 和节点。
+#
+# 多配置：每个配置一个目录 PROXY_DIR/profiles/<名字>/（config.yaml，来自订阅的还有 subscription.url），
+# PROXY_CONF 是一个软链接，指向当前启用的那份 config.yaml。mihomo 服务只读 PROXY_CONF，
+# 所以 nixos/modules/mihomo.nix 不用关心有几个配置。
 
 # ---- 设置（可用环境变量覆盖）----
 PROXY_CONF="${MIHOMO_CONF:-$HOME/.config/mihomo/config.yaml}"
 PROXY_PORT="${MIHOMO_PORT:-7890}"
 PROXY_API="${MIHOMO_API:-127.0.0.1:9090}"
-# 订阅地址单独存一份，供 `proxy update` 重新下载订阅用（权限 600，和配置文件一样不进 git）
-PROXY_SUB_URL_FILE="${MIHOMO_SUB_URL_FILE:-$(dirname "$PROXY_CONF")/subscription.url}"
+PROXY_DIR="$(dirname "$PROXY_CONF")"
+PROXY_PROFILES="${PROXY_DIR}/profiles"
 # 订阅服务器常按 User-Agent 决定返回什么格式；clash.meta 通常会拿到 Clash/mihomo 的 YAML
 PROXY_UA="${MIHOMO_UA:-clash.meta}"
-PROXY_GEODB="${MIHOMO_GEODB:-$(dirname "$PROXY_CONF")/geoip.metadb}"
+PROXY_GEODB="${MIHOMO_GEODB:-${PROXY_DIR}/geoip.metadb}"
 # 订阅里常混着几条展示用的假节点（官网、续费入口、剩余流量、到期时间），不是真节点，
 # 所以在节点列表里隐藏、也不允许按编号选中
 PROXY_INFO_RE='://|剩余|重置|到期|官网|续费|过滤'
 
 # 子命令表："名字|说明"。主帮助和 `proxy help` 都从这里生成，加子命令时在这里登记一行
 PROXY_COMMANDS=(
-  "init|paste your subscription URL (hidden input); downloads it and builds ~/.config/mihomo/config.yaml"
-  "update|re-download the saved subscription to refresh nodes and rules"
+  "add|add <name> [file]: new profile from a Clash config file, or (no file) from a subscription URL (hidden input)"
+  "list|list profiles (the active one is marked)"
+  "switch|switch <name>: activate another profile (restarts mihomo if it is running; sudo)"
+  "rm|rm <name>: delete a profile (not the active one)"
+  "update|update [name]: re-download a subscription profile (default: the active one)"
   "on|start the service (sudo; not started at boot, saves power)"
   "off|stop the service (sudo)"
   "status|service state, current node and whether TUN is on (default)"
@@ -41,10 +48,38 @@ proxy_need_running() {
   proxy_running || die "mihomo is not running; run '${PROG} proxy on' first"
 }
 proxy_need_config() {
-  [ -f "$PROXY_CONF" ] || die "no config file; run '${PROG} proxy init' first"
+  [ -e "$PROXY_CONF" ] || die "no active profile; run '${PROG} proxy add <name> [file]' first"
 }
+
+# 当前启用的配置名：PROXY_CONF 软链接指向 profiles/<名字>/config.yaml
+proxy_current() {
+  if [ -L "$PROXY_CONF" ]; then basename "$(dirname "$(readlink "$PROXY_CONF")")"; fi
+}
+proxy_valid_name() { [[ "${1:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; }
+proxy_need_profile() {
+  proxy_valid_name "${1:-}" && [ -d "${PROXY_PROFILES}/$1" ] \
+    || die "no profile named '${1:-}'; see: ${PROG} proxy list"
+}
+proxy_activate() { ln -sfn "${PROXY_PROFILES}/$1/config.yaml" "$PROXY_CONF"; }
+
+# 订阅地址单独存在配置目录里，供 `proxy update` / `usage` 用（权限 600；从文件导入的配置没有）
+proxy_sub_file() { printf '%s/%s/subscription.url' "$PROXY_PROFILES" "$1"; }
 proxy_need_sub_url() {
-  [ -f "$PROXY_SUB_URL_FILE" ] || die "no saved subscription URL; run '${PROG} proxy init' first"
+  [ -f "$(proxy_sub_file "$1")" ] \
+    || die "profile '${1}' has no subscription URL (imported from a file); re-import it: ${PROG} proxy add ${1} <file>"
+}
+
+# 旧版本只有一个 config.yaml（普通文件）：第一次使用时自动迁成名为 default 的配置
+proxy_migrate() {
+  [ -f "$PROXY_CONF" ] && [ ! -L "$PROXY_CONF" ] || return 0
+  mkdir -p "${PROXY_PROFILES}/default"
+  chmod 700 "$PROXY_DIR" "$PROXY_PROFILES" "${PROXY_PROFILES}/default"
+  mv "$PROXY_CONF" "${PROXY_PROFILES}/default/config.yaml"
+  if [ -f "${PROXY_DIR}/subscription.url" ]; then
+    mv "${PROXY_DIR}/subscription.url" "$(proxy_sub_file default)"
+  fi
+  proxy_activate default
+  ok "Migrated the existing config to profile 'default'"
 }
 
 # 当前使用的节点组：订阅的节点组名因服务商而异。
@@ -98,15 +133,16 @@ proxy_fetch_geodata() {
   fi
 }
 
-# 下载订阅并拼装配置：基础设置（examples/mihomo/config.example.yaml）+ 订阅里的
-# proxies / proxy-groups / rules（以及 providers）。订阅里的端口、DNS、TUN 等其余设置丢弃，
-# 以基础设置为准。订阅地址会被 curl 的错误输出隐藏，不会打印到屏幕。
-# 测试/离线时可以用环境变量 MIHOMO_SUB_FILE 指向一个本地文件，代替下载
+# 拼装配置：基础设置（examples/mihomo/config.example.yaml）+ 来源里的
+# proxies / proxy-groups / rules（以及 providers）。来源里的端口、DNS、TUN 等其余设置丢弃，
+# 以基础设置为准，所以不管哪个配置，`tun`、`nodes`、`use` 都一样用。
+# 参数：写到哪个文件，来源（订阅地址，或本地配置文件，二选一，另一个传空串）。
+# 订阅地址会被 curl 的错误输出隐藏，不会打印到屏幕
 proxy_build_config() {
-  local url="$1" raw out size rc=0
+  local target="$1" url="$2" file="$3" raw out size rc=0
   raw="$(mktemp)"; out="$(mktemp)"
-  if [ -n "${MIHOMO_SUB_FILE:-}" ]; then
-    cp "$MIHOMO_SUB_FILE" "$raw"
+  if [ -n "$file" ]; then
+    cp "$file" "$raw"
   else
     curl -fsSL -m 60 -A "$PROXY_UA" "$url" -o "$raw" 2>/dev/null || rc=$?
     if [ "$rc" -ne 0 ]; then
@@ -117,7 +153,7 @@ proxy_build_config() {
   size="$(wc -c < "$raw")"
   if ! grep -q -E '^(proxies|proxy-providers):' "$raw"; then
     rm -f "$raw" "$out"
-    die "the subscription did not return a Clash/mihomo YAML config (${size} bytes). The server may pick the format by User-Agent; try: MIHOMO_UA=clash-verge ${PROG} proxy init"
+    die "the source is not a Clash/mihomo YAML config (${size} bytes). For a subscription the server may pick the format by User-Agent; try: MIHOMO_UA=clash-verge ${PROG} proxy add <name>"
   fi
   cp examples/mihomo/config.example.yaml "$out"
   awk '
@@ -130,41 +166,96 @@ proxy_build_config() {
   rm -f "$raw"
   grep -q -E '^proxy-groups:' "$out" || warn "the subscription has no proxy-groups; nodes cannot be switched with 'proxy use'"
   grep -q -E '^rules:' "$out" || warn "the subscription has no rules; mihomo will send everything DIRECT"
-  mkdir -p "$(dirname "$PROXY_CONF")"
-  chmod 700 "$(dirname "$PROXY_CONF")"
-  install -m 600 "$out" "$PROXY_CONF"
+  mkdir -p "$(dirname "$target")"
+  chmod 700 "$PROXY_DIR" "$PROXY_PROFILES" "$(dirname "$target")"
+  install -m 600 "$out" "$target"
   rm -f "$out"
 }
 
 # ---- 子命令 ----
 
-# 只需要输入订阅地址：下载订阅，取其中的节点、节点组和规则，拼上我们的基础设置，生成配置。
-# 地址用 read -s 读取：输入不回显，也不会进命令历史或进程参数列表
-pcmd_init() {
-  local url
-  read -r -s -p "Paste your subscription URL (input is hidden): " url
-  echo
-  case "$url" in http://*|https://*) ;; *) die "that does not look like an http(s) URL" ;; esac
-  case "$url" in *[[:space:]]*) die "the URL must not contain spaces" ;; esac
-  say "Downloading the subscription and building the config"
-  proxy_build_config "$url"
-  mkdir -p "$(dirname "$PROXY_SUB_URL_FILE")"
-  (umask 077; printf '%s\n' "$url" > "$PROXY_SUB_URL_FILE")
-  chmod 600 "$PROXY_SUB_URL_FILE"
-  ok "Config written to ${PROXY_CONF} (mode 600, never commit it)"
+# 新增（或覆盖同名）配置，来源二选一：
+#   add <名字> <文件>   导入你提供的 Clash/mihomo 配置文件
+#   add <名字>          粘贴订阅地址，下载订阅（地址用 read -s 读取：不回显，不进命令历史和进程参数）
+# 第一个配置会自动启用；之后新增的不改变当前配置，用 switch 切换
+pcmd_add() {
+  local name="${1:-}" file="${2:-}" url="" dir
+  proxy_valid_name "$name" || die "usage: ${PROG} proxy add <name> [file]   (name: letters, digits, . _ -)"
+  dir="${PROXY_PROFILES}/${name}"
+  if [ -n "$file" ]; then
+    [ -f "$file" ] || die "no such file: ${file}"
+    say "Importing ${file} as profile '${name}'"
+  else
+    read -r -s -p "Paste your subscription URL (input is hidden): " url
+    echo
+    case "$url" in http://*|https://*) ;; *) die "that does not look like an http(s) URL" ;; esac
+    case "$url" in *[[:space:]]*) die "the URL must not contain spaces" ;; esac
+    say "Downloading the subscription and building profile '${name}'"
+  fi
+  proxy_build_config "${dir}/config.yaml" "$url" "$file"
+  rm -f "$(proxy_sub_file "$name")"
+  if [ -n "$url" ]; then
+    (umask 077; printf '%s\n' "$url" > "$(proxy_sub_file "$name")")
+    chmod 600 "$(proxy_sub_file "$name")"
+  fi
+  ok "Profile '${name}' saved in ${dir} (mode 600, never commit it)"
+  if [ -z "$(proxy_current)" ]; then
+    proxy_activate "$name"
+    ok "Activated '${name}'"
+    say "Next: ${PROG} proxy on"
+  else
+    echo "   Activate it with: ${PROG} proxy switch ${name}"
+  fi
   proxy_fetch_geodata
-  echo "   Subscription URL kept in ${PROXY_SUB_URL_FILE} (mode 600) for '${PROG} proxy update'"
-  say "Next: ${PROG} proxy on"
+}
+
+pcmd_list() {
+  local cur d n src
+  cur="$(proxy_current)"
+  say "Profiles in ${PROXY_PROFILES}"
+  for d in "${PROXY_PROFILES}"/*/; do
+    [ -d "$d" ] || continue
+    n="$(basename "$d")"
+    if [ -f "$(proxy_sub_file "$n")" ]; then src="subscription"; else src="file"; fi
+    if [ "$n" = "$cur" ]; then printf '   ✅ %-16s %s (active)\n' "$n" "$src"; else printf '      %-16s %s\n' "$n" "$src"; fi
+  done
+  [ -n "$cur" ] || echo "   none yet; add one with: ${PROG} proxy add <name> [file]"
+}
+
+# 切换配置：改软链接；mihomo 在运行就重启让它生效（节点选择会恢复成配置里的默认）
+pcmd_switch() {
+  local name="${1:-}"
+  proxy_need_profile "$name"
+  if [ "$name" = "$(proxy_current)" ]; then ok "'${name}' is already active"; return 0; fi
+  proxy_activate "$name"
+  ok "Activated '${name}'"
+  if proxy_running; then
+    sudo systemctl restart mihomo
+    ok "mihomo restarted with the new profile"
+  else
+    echo "   mihomo is not running; start it with: ${PROG} proxy on"
+  fi
+}
+
+pcmd_rm() {
+  local name="${1:-}"
+  proxy_need_profile "$name"
+  [ "$name" != "$(proxy_current)" ] || die "'${name}' is the active profile; switch to another one first"
+  rm -r "${PROXY_PROFILES:?}/${name}"
+  ok "Removed profile '${name}'"
 }
 
 # 重新下载订阅刷新节点和规则（节点会变，订阅是静态拼进配置的，需要手动更新）
 pcmd_update() {
-  proxy_need_sub_url
-  say "Re-downloading the subscription and rebuilding the config"
-  proxy_build_config "$(head -1 "$PROXY_SUB_URL_FILE")"
-  ok "Config updated: ${PROXY_CONF}"
+  local name="${1:-$(proxy_current)}"
+  [ -n "$name" ] || die "no active profile; run '${PROG} proxy add <name> [file]' first"
+  proxy_need_profile "$name"
+  proxy_need_sub_url "$name"
+  say "Re-downloading the subscription of '${name}' and rebuilding its config"
+  proxy_build_config "${PROXY_PROFILES}/${name}/config.yaml" "$(head -1 "$(proxy_sub_file "$name")")" ""
+  ok "Profile '${name}' updated"
   proxy_fetch_geodata
-  if proxy_running; then
+  if proxy_running && [ "$name" = "$(proxy_current)" ]; then
     warn "mihomo is running with the old config; apply it with: ${PROG} proxy off && ${PROG} proxy on"
   fi
 }
@@ -172,7 +263,7 @@ pcmd_update() {
 pcmd_on() {
   proxy_need_config
   grep -q -E '^(proxies|proxy-providers):' "$PROXY_CONF" \
-    || die "the config has no proxies; run '${PROG} proxy init' to build it from your subscription"
+    || die "the active profile has no proxies; re-add it: ${PROG} proxy add <name> [file]"
   [ -f "$PROXY_GEODB" ] \
     || warn "no geoip.metadb yet; mihomo will download it itself and may time out (run: ${PROG} proxy update)"
   sudo systemctl start mihomo
@@ -196,7 +287,7 @@ pcmd_status() {
   else
     warn "mihomo service: $(systemctl is-active mihomo 2>/dev/null || true)"
   fi
-  if [ -f "$PROXY_CONF" ]; then echo "   config: ${PROXY_CONF}"; else echo "   config: missing (run proxy init)"; fi
+  if [ -e "$PROXY_CONF" ]; then echo "   profile: $(proxy_current)  (${PROXY_CONF})"; else echo "   profile: none (run: ${PROG} proxy add <name> [file])"; fi
 }
 
 # 运行时切换透明代理，不需要重新构建；需要 mihomo 已启动
@@ -247,12 +338,13 @@ pcmd_use() {
 # 流量：机场订阅的总用量（订阅响应头 subscription-userinfo，和手机上看到的一致），
 # 以及 mihomo 本次启动以来转发的流量（重启清零）。订阅地址只在本机读取，不会打印
 pcmd_usage() {
-  proxy_need_sub_url
-  local hdr info
-  hdr="$(curl -s -m 20 -D - -o /dev/null -A "$PROXY_UA" "$(head -1 "$PROXY_SUB_URL_FILE")" | tr -d '\r' || true)"
+  local name hdr info
+  name="$(proxy_current)"
+  proxy_need_sub_url "$name"
+  hdr="$(curl -s -m 20 -D - -o /dev/null -A "$PROXY_UA" "$(head -1 "$(proxy_sub_file "$name")")" | tr -d '\r' || true)"
   info="$(printf '%s\n' "$hdr" | grep -i '^subscription-userinfo:' | head -1 | cut -d: -f2- || true)"
   if [ -n "$info" ]; then
-    say "Subscription quota"
+    say "Subscription quota (profile '${name}')"
     printf '%s\n' "$info" | awk -F';' "${AWK_HUM}"'
       { for (k = 1; k <= NF; k++) { gsub(/ /, "", $k); split($k, kv, "="); v[kv[1]] = kv[2] } }
       END {
@@ -312,6 +404,7 @@ cmd_proxy() {
   local sub="${1:-status}"
   shift || true
   case "$sub" in help|-h|--help) proxy_help; return 0 ;; esac
+  proxy_migrate
   declare -F "pcmd_${sub}" >/dev/null \
     || die "unknown proxy subcommand: ${sub} ($(proxy_names); see: ${PROG} proxy help)"
   "pcmd_${sub}" "$@"
