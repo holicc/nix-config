@@ -22,7 +22,10 @@
   (neomacs--effect-set 'cursor-color-cycle :enabled nil))
 
 ;; 主题和行号
-(setq doom-theme 'doom-one)
+;; Catppuccin Macchiato：和系统配色（home/theme）一致。包在 packages.el 里声明，装了要 `doom sync`。
+;; 风味可选 latte、frappe、macchiato、mocha；改风味后用 `M-x catppuccin-reload` 或重启。
+(setq catppuccin-flavor 'macchiato)
+(setq doom-theme 'catppuccin)
 (setq display-line-numbers-type t)
 
 ;; org 文件目录（必须在 org 加载之前设置）

@@ -51,3 +51,6 @@
 ;; (unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
+
+;; 主题：Catppuccin（和系统的 Niri、Alacritty、btop 等统一配色，风味在 config.el 里选）
+(package! catppuccin-theme)
