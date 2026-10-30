@@ -18,6 +18,7 @@ home/                       用户级（home-manager）
     dev/system.nix          btop、lsof、wl-clipboard
     dev/network.nix         dig（dnsutils）
     dev/claude.nix          Claude Code（unstable）
+    dev/neomacs.nix         Neomacs（Rust 重写的 Emacs，来自它自己的 flake input）
     dev/lang/               语言工具链：go、rust（rustup）、python、node
 scripts/                    维护脚本，nixos.sh 装成 nx 命令（入口只做分发，实现按职责放在 lib/ 下）
 examples/mihomo/            代理基础配置模板（不含订阅）
