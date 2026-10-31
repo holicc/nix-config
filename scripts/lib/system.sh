@@ -81,20 +81,43 @@ bump_qingjian_tag() {
   fi
 }
 
+# 不带参数的 `nx update` 默认跳过的 input：更新它会触发很长的本机编译（neomacs 最后一步单线程 LTO 要几十分钟）。
+# 想一并更新，加 --all；想只更新它，点名：`nx update neomacs`。要加别的 input，写进这个数组。
+# 注意：`nx switch` 本身从不更新 input，只按 flake.lock 构建；这里只管 `nx update`。
+UPDATE_SKIP=(neomacs)
+
 # 升级 flake 的 input 并写入 flake.lock。
-# 用法：nx update [input...]，不带参数更新全部，如 `nx update nixpkgs` 只更新 nixpkgs。
+# 用法：
+#   nx update              更新全部，但跳过 UPDATE_SKIP 里的（默认只有 neomacs）
+#   nx update --all        更新全部，包括 UPDATE_SKIP 里的
+#   nx update <input>...   只更新点名的，如 `nx update nixpkgs`、`nx update neomacs`（--all 不能和名字一起用）
 # 只改 flake.lock（青简会同时改 flake.nix 里的 tag），不构建、不切换：之后 `nx diff` 预览软件包变化，
 # 满意再 `nx switch`，不满意可以 `git checkout flake.lock flake.nix` 退回上一个版本。
 # 直连 GitHub 很慢，需要代理时自己带环境变量：https_proxy=http://127.0.0.1:7890 nx update
 cmd_update() {
   stage
-  local before after arg
+  local before after arg all=0
+  local -a names=() targets=()
   for arg in "$@"; do
+    if [ "$arg" = --all ]; then all=1; else names+=("$arg"); fi
+  done
+  if [ "$all" = 1 ] && [ ${#names[@]} -gt 0 ]; then
+    die "--all and input names cannot be combined: use '${PROG} update --all' or '${PROG} update <input>'"
+  fi
+  for arg in ${names[@]+"${names[@]}"}; do
     if [ "$arg" = qingjian ]; then bump_qingjian_tag; fi
   done
+  if [ ${#names[@]} -gt 0 ]; then
+    targets=("${names[@]}")
+  elif [ "$all" = 0 ]; then
+    # 不带参数：取 flake.lock 里所有顶层 input，去掉 UPDATE_SKIP
+    mapfile -t targets < <(jq -r '.nodes.root.inputs | keys[]' flake.lock | grep -vxF -f <(printf '%s\n' "${UPDATE_SKIP[@]}"))
+    say "Skipping ${UPDATE_SKIP[*]} (include with '${PROG} update --all', or update by name: '${PROG} update ${UPDATE_SKIP[0]}')"
+  fi
+  # --all：targets 留空，nix flake update 不带名字就是更新全部
   before="$(cat flake.lock flake.nix | sha256sum | cut -d' ' -f1)"
   say "Updating flake inputs (nixpkgs is ~45 MB; this can take several minutes)"
-  nix flake update "$@"
+  nix flake update ${targets[@]+"${targets[@]}"}
   after="$(cat flake.lock flake.nix | sha256sum | cut -d' ' -f1)"
   if [ "$before" = "$after" ]; then
     ok "flake.lock is already up to date"
