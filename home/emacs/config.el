@@ -46,14 +46,28 @@
 (map! :leader
       :desc "Comment line" ";" #'comment-line)
 
-;; 切换项目后（SPC p p）自动在左侧打开 dirvish 文件树。
-;; dirvish-side 是开关：已显示时再调用会把光标移进侧边栏，所以先判断；
-;; save-selected-window 让光标留在编辑窗口。树的根目录取当前文件所在的 git 仓库。
+;; 切换项目后（SPC p p）自动在左侧打开 treemacs 文件树。
+;; +treemacs/toggle 是开关：已显示时再调用会把它关掉，所以先判断可见性；
+;; save-selected-window 让光标留在编辑窗口。树里只显示当前项目。
 ;; 限制：只对"切换项目"触发；直接从命令行 `neomacs 某目录` 启动、或手动 find-file 不会自动打开。
 ;; 不想要：删掉这段，重启 Emacs；手动开关仍是 SPC o p。
-(defun +my/dirvish-side-open-h ()
-  "Show the dirvish project sidebar unless it is already visible."
-  (when (require 'dirvish-side nil t)
-    (unless (dirvish-side-session-visible-p)
-      (save-selected-window (dirvish-side)))))
-(add-hook 'projectile-after-switch-project-hook #'+my/dirvish-side-open-h)
+(defun +my/treemacs-open-h ()
+  "Show the treemacs project sidebar unless it is already visible."
+  (when (require 'treemacs nil t)
+    (unless (eq (treemacs-current-visibility) 'visible)
+      (save-selected-window (+treemacs/toggle)))))
+(add-hook 'projectile-after-switch-project-hook #'+my/treemacs-open-h)
+
+;; 侧边栏宽度（treemacs 默认 35 列）；名字放不下可以再加大。
+(setq treemacs-width 40)
+
+;; tree-sitter 语法库：由 home-manager 预编译放在这个目录（见 home/emacs/default.nix），
+;; 让 Emacs 直接加载，不用联网下载再现场编译。
+(after! treesit
+  (add-to-list 'treesit-extra-load-path (expand-file-name "~/.local/share/tree-sitter-grammars")))
+
+;; Python 保存时格式化：apheleia 默认用 black，本机没装；改用已有的 ruff（ruff format，风格和 black 兼容），
+;; 不额外装包。想换回 black：装 pkgs.black，并删掉这段。
+(after! apheleia
+  (setf (alist-get 'python-mode apheleia-mode-alist) 'ruff
+        (alist-get 'python-ts-mode apheleia-mode-alist) 'ruff))
