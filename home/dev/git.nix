@@ -28,7 +28,7 @@
     gaa = "git add -A";
     gcm = "git commit -m";
     gp = "git push";
-    gpl = "git pull";
+    gl = "git pull";
     gd = "git diff";
     glo = "git log --oneline -10";
   };
