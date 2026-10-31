@@ -36,7 +36,7 @@
     # Neomacs：用 Rust 重写的 Emacs（GPU 渲染），见 home/dev/neomacs.nix。
     # 刻意不让它跟随 nixpkgs：它自带固定的 nixpkgs 和 WebKit，跟随会让构建产物对不上、缓存失效。
     # 升级：nx update neomacs
-    neomacs.url = "github:eval-exec/neomacs";
+    neomacs.url = "github:holicc/neomacs";
 
     # Catppuccin 统一配色：一处声明风味，Alacritty、btop、bat、fzf 等自动套用（见 home/theme）
     catppuccin = {
