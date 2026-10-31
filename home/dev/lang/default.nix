@@ -8,5 +8,6 @@
     ./rust.nix
     ./python.nix
     ./node.nix
+    ./nix.nix
   ];
 }
