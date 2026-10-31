@@ -3,6 +3,10 @@
 ;; Doom 的个人配置，由 home-manager 链接到 ~/.config/doom/config.el（见 home/emacs/default.nix），
 ;; 直接编辑本文件，`doom sync` 之后或重启 Emacs 生效（只改 config.el 重启即可，不用 sync）。
 
+;; 自动保存设置
+(setq auto-save-visited-interval 5)
+(auto-save-visited-mode 1)
+
 ;; 字体：英文用 CaskaydiaCove Nerd Font，中文用等宽的 Noto Sans Mono CJK SC（都由系统字体模块安装）。
 ;; 必须显式指定简体中文(SC)：fontconfig 默认给中文配的是 Noto Sans CJK JP，汉字会是日文字形。
 ;; 排查：`fc-match 'Noto Sans Mono CJK SC'` 看字体是否存在。
@@ -35,3 +39,21 @@
 (setq-default indent-tabs-mode nil)     ; 缩进用空格
 (setq-default fill-column 80)
 (setq use-short-answers t)              ; yes/no 简写成 y/n
+
+;; 快捷键：SPC ; 注释当前行（visual 模式下注释选中的行）。
+;; 会顶掉 Doom 默认的 SPC ;（我记得是 pp-eval-expression，执行 Elisp 表达式；那个功能仍可用 M-: 或 M-x eval-expression）。
+;; 想恢复默认：删掉这段，重启 Emacs。
+(map! :leader
+      :desc "Comment line" ";" #'comment-line)
+
+;; 切换项目后（SPC p p）自动在左侧打开 dirvish 文件树。
+;; dirvish-side 是开关：已显示时再调用会把光标移进侧边栏，所以先判断；
+;; save-selected-window 让光标留在编辑窗口。树的根目录取当前文件所在的 git 仓库。
+;; 限制：只对"切换项目"触发；直接从命令行 `neomacs 某目录` 启动、或手动 find-file 不会自动打开。
+;; 不想要：删掉这段，重启 Emacs；手动开关仍是 SPC o p。
+(defun +my/dirvish-side-open-h ()
+  "Show the dirvish project sidebar unless it is already visible."
+  (when (require 'dirvish-side nil t)
+    (unless (dirvish-side-session-visible-p)
+      (save-selected-window (dirvish-side)))))
+(add-hook 'projectile-after-switch-project-hook #'+my/dirvish-side-open-h)
