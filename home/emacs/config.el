@@ -86,3 +86,10 @@
     (process-send-eof proc)))
 (when (and (getenv "WAYLAND_DISPLAY") (executable-find "wl-copy"))
   (setq interprogram-cut-function #'+my/wl-copy))
+
+;; 终端：用 Doom 的 term 模块（SPC o t 开关底部弹出终端，SPC o T 在当前窗口打开），不用 Neomacs 自带的 neo-term
+;; （它的配色在 Rust 里写死、不跟主题走，也不能指定启动目录）。term 的颜色走 Emacs 主题，从当前目录启动。
+;; shell：multi-term 默认取 $SHELL，本机是 bash；Alacritty 是在配置里显式指定了 nu，这里同样指定 nu，和平时的终端一致。
+;; 已在 Emacs 的 term 里实测 nu 能正常运行（Starship 提示符、中文输出都对）。找不到 nu 时是 nil，回退到默认。
+(after! multi-term
+  (setq multi-term-program (executable-find "nu")))
