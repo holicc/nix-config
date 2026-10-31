@@ -71,3 +71,18 @@
 (after! apheleia
   (setf (alist-get 'python-mode apheleia-mode-alist) 'ruff
         (alist-get 'python-ts-mode apheleia-mode-alist) 'ruff))
+
+;; 复制到系统剪贴板：Neomacs 自己设置 Wayland 剪贴板时，需要一个"近期的输入事件序号"，
+;; 拿不到就静默失败（粘贴到浏览器、终端没东西）。这里改成调用 wl-copy（wl-clipboard，已由 home/dev/system.nix 安装），
+;; 它不依赖这个序号。已实测：没有焦点的窗口里 kill-new 也能让 wl-paste 读到，中文正常。
+;; 反方向（从外部复制再粘贴进 Emacs）Neomacs 自己就能读，不用处理。
+;; 没有 wl-copy 或不在 Wayland 下时，回退到原来的方式。想撤销：删掉这段，重启 Emacs。
+(defun +my/wl-copy (text)
+  "Put TEXT on the system clipboard through wl-copy."
+  (let ((proc (make-process :name "wl-copy" :buffer nil :noquery t
+                            :command '("wl-copy" "--type" "text/plain;charset=utf-8")
+                            :connection-type 'pipe)))
+    (process-send-string proc text)
+    (process-send-eof proc)))
+(when (and (getenv "WAYLAND_DISPLAY") (executable-find "wl-copy"))
+  (setq interprogram-cut-function #'+my/wl-copy))
