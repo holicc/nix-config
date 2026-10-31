@@ -10,5 +10,6 @@
     ./node.nix
     ./nix.nix
     ./shell.nix
+    ./markdown.nix
   ];
 }
