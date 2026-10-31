@@ -9,5 +9,6 @@
     ./python.nix
     ./node.nix
     ./nix.nix
+    ./shell.nix
   ];
 }
