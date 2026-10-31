@@ -45,26 +45,33 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, ... }@inputs: {
-    # 主机名 nixos-dev，架构 x86_64-linux
-    nixosConfigurations.nixos-dev = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = { inherit inputs; };
-      modules = [
-        ./nixos/configuration.nix
+  outputs =
+    {
+      self,
+      nixpkgs,
+      home-manager,
+      ...
+    }@inputs:
+    {
+      # 主机名 nixos-dev，架构 x86_64-linux
+      nixosConfigurations.nixos-dev = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./nixos/configuration.nix
 
-        # home-manager 以 NixOS 模块方式集成：
-        # `nixos-rebuild switch --flake .` 即可同时应用系统和用户配置
-        home-manager.nixosModules.home-manager
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.extraSpecialArgs = { inherit inputs; };
-          # 若已有同名文件导致冲突，自动备份为 .backup 而不是报错
-          home-manager.backupFileExtension = "backup";
-          home-manager.users.joe = import ./home;
-        }
-      ];
+          # home-manager 以 NixOS 模块方式集成：
+          # `nixos-rebuild switch --flake .` 即可同时应用系统和用户配置
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.extraSpecialArgs = { inherit inputs; };
+            # 若已有同名文件导致冲突，自动备份为 .backup 而不是报错
+            home-manager.backupFileExtension = "backup";
+            home-manager.users.joe = import ./home;
+          }
+        ];
+      };
     };
-  };
 }

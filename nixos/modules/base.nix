@@ -18,7 +18,10 @@
   time.timeZone = "Asia/Shanghai";
 
   # 启用 flakes 与新版 nix 命令（未启用则本仓库无法求值）
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   # 二进制缓存：优先走 USTC 国内镜像加速下载预编译包，官方源兜底。
   # 注意：只加速二进制包，不影响 flake input（github 源码）的下载；
@@ -45,7 +48,10 @@
   # 用户 joe：wheel 可 sudo，networkmanager 可管理网络
   users.users.joe = {
     isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
   };
 
   # 全局基础工具：只放最小集合，其余按项目用 nix develop 或放用户级

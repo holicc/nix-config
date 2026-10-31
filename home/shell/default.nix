@@ -36,10 +36,16 @@ in
           name = "space_accepts_menu";
           modifier = "none";
           keycode = "space";
-          mode = [ "emacs" "vi_insert" ];
+          mode = [
+            "emacs"
+            "vi_insert"
+          ];
           event = [
             { send = "menuaccept"; }
-            { edit = "insertchar"; value = " "; }
+            {
+              edit = "insertchar";
+              value = " ";
+            }
           ];
         }
       ];

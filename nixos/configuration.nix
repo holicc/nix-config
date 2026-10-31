@@ -10,10 +10,10 @@
     # 硬件配置：由 nixos-generate-config 生成，已在机器上，勿手改
     ./hardware-configuration.nix
 
-    ./modules/base.nix   # 主机名/时区/引导/SSH/用户/全局工具
-    ./modules/power.nix  # 电源管理（TLP）
-    ./modules/niri.nix   # 桌面：Niri + greetd + 终端 + 截图
-    ./modules/fonts.nix  # 字体：Nerd Font + 中文
+    ./modules/base.nix # 主机名/时区/引导/SSH/用户/全局工具
+    ./modules/power.nix # 电源管理（TLP）
+    ./modules/niri.nix # 桌面：Niri + greetd + 终端 + 截图
+    ./modules/fonts.nix # 字体：Nerd Font + 中文
     ./modules/browser.nix # 浏览器：Google Chrome（unfree，需代理预下载）
     ./modules/input-method.nix # 中文输入法：Fcitx5 + 拼音
     ./modules/qingjian.nix # 青简输入法：Fcitx5 插件 + 资源 + server 服务（server 手动编译）

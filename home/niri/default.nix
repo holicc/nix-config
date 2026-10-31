@@ -7,11 +7,11 @@
 let
   # 拼装顺序即配置文件里的先后顺序
   parts = [
-    ./general.kdl      # 启动项、去标题栏、杂项
-    ./layout.kdl       # 窗口间距、聚焦环、阴影
-    ./windowrules.kdl  # 窗口规则：圆角、Noctalia 设置窗口
-    ./input.kdl        # 触摸板
-    ./keybindings.kdl  # 快捷键
+    ./general.kdl # 启动项、去标题栏、杂项
+    ./layout.kdl # 窗口间距、聚焦环、阴影
+    ./windowrules.kdl # 窗口规则：圆角、Noctalia 设置窗口
+    ./input.kdl # 触摸板
+    ./keybindings.kdl # 快捷键
   ];
 in
 {

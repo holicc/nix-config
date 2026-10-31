@@ -26,18 +26,25 @@
 #   - 求值报错和 data.lock 有关：官方改了这个文件的格式，看下面 lock 那段的解析
 #   - 编译 server 失败：新版本可能真的需要更新的 Rust，看报错里的 rustc 版本要求；
 #     新增了 git 依赖时 allowBuiltinFetchGit 会照常拉取，若在纯模式求值报错再改成 outputHashes
-{ lib, pkgs, inputs, ... }:
+{
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 let
   upstream = inputs.qingjian;
   short = builtins.substring 0 8 upstream.rev;
 
   # data.lock 是一行一个 `键 = 值`，# 开头的是注释，没有 ` = ` 的行会被跳过
   lock = lib.listToAttrs (
-    lib.concatMap
-      (line:
-        let m = builtins.match "([^ =]+) = (.*)" line;
-        in lib.optional (m != null) (lib.nameValuePair (builtins.elemAt m 0) (builtins.elemAt m 1)))
-      (lib.splitString "\n" (builtins.readFile "${upstream}/tools/release/data.lock"))
+    lib.concatMap (
+      line:
+      let
+        m = builtins.match "([^ =]+) = (.*)" line;
+      in
+      lib.optional (m != null) (lib.nameValuePair (builtins.elemAt m 0) (builtins.elemAt m 1))
+    ) (lib.splitString "\n" (builtins.readFile "${upstream}/tools/release/data.lock"))
   );
 
   data = pkgs.fetchurl {
@@ -84,17 +91,24 @@ let
   # 资源根目录：server 通过 QINGJIAN_RESOURCES 找它，布局是 assets/ 加 data/。
   # assets 取仓库里的 sample、glossary、levels、emoji；data 是官方数据包原样解开
   # （顶层目录是 data/，内含 generated/ 词库和 models/ 整句模型）
-  resources = pkgs.runCommand "qingjian-resources-${short}"
-    { nativeBuildInputs = [ pkgs.gnutar pkgs.gzip ]; } ''
-    mkdir -p $out/assets
-    for kind in sample glossary levels emoji; do
-      cp -r ${upstream}/assets/$kind $out/assets/
-    done
-    tar -xzf ${data} -C $out
-    chmod -R u+w $out
-    # 数据包里混进的 macOS 冗余文件（._ 开头）不是产品数据
-    find $out -name '._*' -delete
-  '';
+  resources =
+    pkgs.runCommand "qingjian-resources-${short}"
+      {
+        nativeBuildInputs = [
+          pkgs.gnutar
+          pkgs.gzip
+        ];
+      }
+      ''
+        mkdir -p $out/assets
+        for kind in sample glossary levels emoji; do
+          cp -r ${upstream}/assets/$kind $out/assets/
+        done
+        tar -xzf ${data} -C $out
+        chmod -R u+w $out
+        # 数据包里混进的 macOS 冗余文件（._ 开头）不是产品数据
+        find $out -name '._*' -delete
+      '';
 in
 {
   i18n.inputMethod.fcitx5.addons = [ plugin ];

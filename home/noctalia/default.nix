@@ -41,11 +41,31 @@
       # 除锁屏外都有 10 秒确认倒计时：第一次按下开始倒计时，再按立即执行，Esc 取消，防止误按关机。
       # 借鉴自 ryan4yin/nix-config
       shell.session.actions = [
-        { action = "lock"; shortcut = "1"; }
-        { action = "logout"; shortcut = "2"; countdown_seconds = 10; }
-        { action = "lock_and_suspend"; shortcut = "3"; countdown_seconds = 10; }
-        { action = "reboot"; shortcut = "4"; countdown_seconds = 10; }
-        { action = "shutdown"; shortcut = "5"; variant = "destructive"; countdown_seconds = 10; }
+        {
+          action = "lock";
+          shortcut = "1";
+        }
+        {
+          action = "logout";
+          shortcut = "2";
+          countdown_seconds = 10;
+        }
+        {
+          action = "lock_and_suspend";
+          shortcut = "3";
+          countdown_seconds = 10;
+        }
+        {
+          action = "reboot";
+          shortcut = "4";
+          countdown_seconds = 10;
+        }
+        {
+          action = "shutdown";
+          shortcut = "5";
+          variant = "destructive";
+          countdown_seconds = 10;
+        }
       ];
 
       # 面板整体放大 10%，适合 2560x1600 高分屏
@@ -99,7 +119,16 @@
         font_scale = 1.1;
         margin_ends = 20;
         # 在默认的左侧区域后追加 CPU/内存/磁盘/网速监控
-        start = [ "launcher" "wallpaper" "workspaces" "cpu" "ram" "disk" "net_rx" "net_tx" ];
+        start = [
+          "launcher"
+          "wallpaper"
+          "workspaces"
+          "cpu"
+          "ram"
+          "disk"
+          "net_rx"
+          "net_tx"
+        ];
       };
 
       # 时钟：年-月-日 星期 时:分
@@ -109,12 +138,30 @@
       };
 
       # 系统监控组件（借鉴 ryan4yin/nix-config，磁盘改为监控 /）
-      widget.cpu = { type = "sysmon"; stat = "cpu_usage"; };
-      widget.ram = { type = "sysmon"; stat = "ram_pct"; };
-      widget.disk = { type = "sysmon"; stat = "disk_used_pct"; path = "/"; };
+      widget.cpu = {
+        type = "sysmon";
+        stat = "cpu_usage";
+      };
+      widget.ram = {
+        type = "sysmon";
+        stat = "ram_pct";
+      };
+      widget.disk = {
+        type = "sysmon";
+        stat = "disk_used_pct";
+        path = "/";
+      };
       # 网速用紧凑单位（如 1.2M），保持宽度稳定
-      widget.net_rx = { type = "sysmon"; stat = "net_rx"; network_speed_compact = true; };
-      widget.net_tx = { type = "sysmon"; stat = "net_tx"; network_speed_compact = true; };
+      widget.net_rx = {
+        type = "sysmon";
+        stat = "net_rx";
+        network_speed_compact = true;
+      };
+      widget.net_tx = {
+        type = "sysmon";
+        stat = "net_tx";
+        network_speed_compact = true;
+      };
 
       # 网络：只显示状态图标，不显示 SSID（太长），悬停仍可看完整名称
       widget.network.show_label = false;

@@ -2,7 +2,7 @@
 { pkgs, ... }:
 {
   home.packages = with pkgs; [
-    lsof         # 查看谁占用了端口或文件
+    lsof # 查看谁占用了端口或文件
     wl-clipboard # wl-copy / wl-paste：命令行和 Wayland 系统剪贴板互通
   ];
 
