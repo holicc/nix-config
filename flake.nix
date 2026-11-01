@@ -8,7 +8,7 @@
     # 主软件源：跟随 26.05 稳定分支，保证系统稳定
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    # 不稳定分支：只给个别需要新版本的软件用（目前是 nushell，见 home/shell），
+    # 不稳定分支：只给个别需要新版本的软件用（目前是 claude-code，见 home/dev/claude.nix），
     # 其余一律用上面的稳定分支。刻意不让别的 input 跟随它，避免整套系统被带着升级。
     # 单独升级：nx update nixpkgs-unstable
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -32,11 +32,6 @@
       url = "github:qingjian-team/qingjian/v0.3.1";
       flake = false;
     };
-
-    # Neomacs：用 Rust 重写的 Emacs（GPU 渲染），见 home/dev/neomacs.nix。
-    # 刻意不让它跟随 nixpkgs：它自带固定的 nixpkgs 和 WebKit，跟随会让构建产物对不上、缓存失效。
-    # 升级：nx update neomacs
-    neomacs.url = "github:holicc/neomacs/slim-build";
 
     # Catppuccin 统一配色：一处声明风味，Alacritty、btop、bat、fzf 等自动套用（见 home/theme）
     catppuccin = {

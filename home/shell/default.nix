@@ -1,172 +1,120 @@
-# 命令行环境：Nushell（现代 shell）+ Starship（命令行提示符）
+# 命令行环境：zsh + Starship（命令行提示符）
 #
-# 刻意不把 Nushell 设为登录 shell（users.users.joe.shell）：
-#   登录 shell 仍是 bash。SSH 登录和各种脚本、教程里的命令都按 bash/POSIX 语法写，
-#   Nushell 不兼容这些语法，设成登录 shell 会让 `ssh 主机 'bash 命令'` 这类用法全部出错。
-#   桌面上的 Alacritty 直接启动 nu（见 home/alacritty/default.nix 的 terminal.shell）；
-#   SSH 登录进去还是 bash，想用 Nushell 时输入 `nu`。
-{ inputs, pkgs, ... }:
+# 刻意不把 zsh 设为登录 shell（users.users.joe.shell）：
+#   登录 shell 仍是 bash，SSH 登录和各种脚本按 bash/POSIX 习惯运行最稳妥。
+#   桌面上的 Alacritty 直接启动 zsh（见 home/alacritty/default.nix 的 terminal.shell）；
+#   SSH 登录进去还是 bash，想用 zsh 时输入 `zsh`。
+{ lib, pkgs, ... }:
 let
   # Nerd Font 图标是私有区字符，直接写进源文件容易在复制、编辑时丢失，
   # 所以用 JSON 的 \u 转义按码点生成（Nix 字符串本身不支持 \u 转义）
   icon = code: builtins.fromJSON ''"\u${code}"'';
 in
 {
-  # Nushell：命令输出是结构化的表格，可以直接按列过滤、排序，如 `ls | where size > 1mb`。
-  # home-manager 会生成它的 config.nu / env.nu。
-  # 排查方向：Nushell 版本升级后偶有语法或配置项变化，启动时报错先查 nushell.sh 的更新说明
-  programs.nushell = {
+  programs.zsh = {
     enable = true;
+    # 补全：Tab 补出路径和命令，不区分大小写
+    enableCompletion = true;
+    # 输入时根据历史给出灰色建议，按右方向键接受
+    autosuggestion.enable = true;
+    # 命令输错时标红，正确时标绿
+    syntaxHighlighting.enable = true;
 
-    # 用 unstable 的 nushell：稳定分支的 0.112 缺少补全菜单的 MenuAccept 事件（空格直接确认候选）。
-    # 回到稳定分支版本：删掉这一行；升级它：nx update nixpkgs-unstable
-    package = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.nushell;
-
-    # 会写成 config.nu 里的 $env.config
-    settings = {
-      # 不显示启动欢迎语
-      show_banner = false;
-
-      # 补全菜单里按空格 = 确认高亮的候选（不用回车），没有菜单时就是普通空格，和 zsh 的手感一致。
-      # menuaccept 是 reedline 新增的事件（nushell 0.116 才有，所以 shell 用的是 unstable 版）；
-      # event 写成列表表示依次执行：先尝试确认菜单项（没菜单时无效果），再插入空格。
-      # 排查方向：`keybindings list` 能看到可用事件；报未知事件说明 nushell 版本太旧
-      keybindings = [
-        {
-          name = "space_accepts_menu";
-          modifier = "none";
-          keycode = "space";
-          mode = [
-            "emacs"
-            "vi_insert"
-          ];
-          event = [
-            { send = "menuaccept"; }
-            {
-              edit = "insertchar";
-              value = " ";
-            }
-          ];
-        }
-      ];
-
-      # 补全：模糊匹配、不区分大小写，输入几个字母就能补出路径和命令
-      completions = {
-        algorithm = "fuzzy";
-        case_sensitive = false;
-      };
-
-      # 历史：用 sqlite 存储，上限 500 万条。isolation = true 表示按上方向键翻历史时，
-      # 看不到其他正开着的终端窗口里刚输入的命令（旧历史不受影响），不会和当前会话混在一起。
-      # 借鉴自 ryan4yin/nix-config
-      history = {
-        file_format = "sqlite";
-        max_size = 5000000;
-        isolation = true;
-      };
-
-      # rm 默认放进回收站而不是永久删除，手滑删错文件还能找回；真要永久删除用 `rm -p`。
-      # 借鉴自 ryan4yin/nix-config
-      rm.always_trash = true;
-
-      # 表格用圆角边框，和 Catppuccin 主题的整体风格一致
-      table.mode = "rounded";
-
-      # ls 沿用 LS_COLORS 配色
-      ls.use_ls_colors = true;
+    # 历史：上限 500 万条，多个终端窗口共享，重复命令只留一条
+    history = {
+      size = 5000000;
+      save = 5000000;
+      share = true;
+      ignoreAllDups = true;
     };
 
-    # 常用别名（只在 Nushell 里生效；bash 保持原样）
+    # oh-my-zsh 只用它的几个插件：
+    #   git                      gst、gco、gcb、gcmsg、gp、gl 等 git 短命令（清单见 `alias | grep git`）
+    #   sudo                     双击 Esc，在当前命令前加 sudo
+    #   extract                  `x 文件` 解压任意格式的压缩包
+    #   history-substring-search 输入前缀后，上下方向键只翻匹配的历史
+    # 插件由 home-manager 从 nixpkgs 取，不联网克隆；不设主题，提示符仍是 Starship。
+    # 这些别名只在 zsh 里有，bash 里没有
+    oh-my-zsh = {
+      enable = true;
+      plugins = [
+        "git"
+        "sudo"
+        "extract"
+        "history-substring-search"
+      ];
+    };
+
+    # 常用别名（只在 zsh 里生效；bash 保持原样）
     shellAliases = {
       ll = "ls -l";
       la = "ls -a";
     };
 
-    # 借鉴自 ryan4yin/nix-config
-    extraConfig = ''
+    initContent = lib.mkMerge [
+      # fzf-tab：把 Tab 补全菜单换成 fzf 界面。必须在补全初始化之后加载（order 570 是 compinit），
+      # 并且在语法高亮、自动建议之前
+      (lib.mkOrder 900 "source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh")
+      ''
       # 把 ~/.local/bin 加进 PATH（自己装的工具常放在这里）
-      # 文件名配色：静态的 LS_COLORS，只有前景色、没有背景色块，颜色引用终端的 ANSI 调色板，
-      # 所以自动跟随 Alacritty 的 Catppuccin 配色。不设它时 Nushell 用内置默认配色，
-      # 其中 README 之类的文件是黄底色块，在深色主题下看不清。
-      # 只写了常见类型：di 目录、ln 链接、ex 可执行、so/pi/bd/cd 特殊文件，其余文件用默认前景色
-      $env.LS_COLORS = "di=1;34:ln=36:ex=32:so=35:pi=33:bd=33:cd=33:or=31:mi=31"
+      typeset -U path
+      path=(~/.local/bin $path)
 
-      use std/util "path add"
-      path add "~/.local/bin"
-      $env.PATH = ($env.PATH | uniq)
-
-      # Nushell 在终端较窄时会把放不下的表格列省略成 "..."。
-      # 下面两个包装按固定宽度渲染，size 之类的列不会被藏起来
-      def lsa [] {
-        ls -al | table --width 350
-      }
-
-      def dus [path: string = ""] {
-        if $path == "" {
-          du | table --width 350
-        } else {
-          du $path | table --width 350
-        }
-      }
+      # 补全菜单：Tab 后可以用方向键选择，大小写不敏感
+      zstyle ':completion:*' menu select
+      zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 
       # nx（~/nixos-config/scripts/nixos.sh 的包装）的 Tab 补全：carapace 只认识它自带规格库里的命令，
       # nx 是自己的脚本，所以在这里声明子命令。新增或改名子命令时同步修改下面的列表
-      def "nu-complete nx" [] {
-        [check build diff test boot switch update gens pkgs gc status proxy help]
+      _nx() {
+        case $CURRENT in
+          2) compadd check build diff test boot switch update gens pkgs gc status proxy help ;;
+          3) [[ $words[2] == proxy ]] && compadd add list switch rm update on off status tun nodes use usage help ;;
+          4) [[ $words[2] == proxy && $words[3] == tun ]] && compadd on off ;;
+        esac
       }
-      def "nu-complete nx proxy" [] {
-        [add list switch rm update on off status tun nodes use usage help]
-      }
-      def "nu-complete nx proxy tun" [] {
-        [on off]
-      }
-      extern "nx" [
-        command?: string@"nu-complete nx"
-        ...rest: string
-      ]
-      extern "nx proxy" [
-        sub?: string@"nu-complete nx proxy"
-        ...rest: string
-      ]
-      extern "nx proxy tun" [
-        state?: string@"nu-complete nx proxy tun"
-      ]
-    '';
+      compdef _nx nx
+      ''
+    ];
   };
 
-  # 下面几个小工具都自带 Nushell 集成，home-manager 会把初始化代码写进 config.nu。
+  # 下面几个小工具都自带 zsh 集成，home-manager 会把初始化代码写进 .zshrc。
 
   # zoxide：记住常去的目录，`z 关键字` 直接跳过去，`zi` 交互式选择。用得越多越准
   programs.zoxide = {
     enable = true;
-    enableNushellIntegration = true;
+    enableZshIntegration = true;
   };
 
-  # carapace：给 git、cargo、kubectl、nix 等外部命令提供子命令和参数补全，
-  # Nushell 自带的补全只覆盖路径和内部命令
+  # fzf：`Ctrl-R` 模糊搜历史，`Ctrl-T` 搜文件，`Alt-C` 模糊跳目录；也是上面 fzf-tab 的依赖
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  # carapace：给 git、cargo、kubectl、nix 等外部命令提供子命令和参数补全
   programs.carapace = {
     enable = true;
-    enableNushellIntegration = true;
+    enableZshIntegration = true;
   };
 
   # direnv + nix-direnv：进入带 flake.nix 的项目目录时自动加载它的开发环境（nix develop），
-  # 离开自动卸载。项目里可以放自己的 flake.nix 来固定该项目的工具版本，
-  # 在项目里放一个 `.envrc`（内容 `use flake`）并执行一次 `direnv allow` 即可。
+  # 离开自动卸载。项目里放一个 `.envrc`（内容 `use flake`）并执行一次 `direnv allow` 即可。
   # nix-direnv 会缓存环境，进入目录是瞬间的，也不会被 nix 垃圾回收清掉
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
-    enableNushellIntegration = true;
+    enableZshIntegration = true;
   };
 
   # Starship：提示符里显示 git 分支和状态、nix-shell 环境、命令耗时、上一条命令是否失败。
-  # 跨 shell，这里同时在 bash 和 Nushell 里启用，所以不管用哪个都有同样的提示符。
+  # 跨 shell，这里同时在 bash 和 zsh 里启用，所以不管用哪个都有同样的提示符。
   # 图标需要 Nerd Font：Alacritty 已设成 CaskaydiaCove Nerd Font（见 home/alacritty/default.nix）。
   # 配色用 Catppuccin Macchiato，与 Noctalia、Alacritty 保持一致
   programs.starship = {
     enable = true;
     enableBashIntegration = true;
-    enableNushellIntegration = true;
+    enableZshIntegration = true;
 
     settings = {
       add_newline = true;

@@ -9,7 +9,10 @@
 # 或者 nixpkgs 升级后 Chrome 版本变了（nixpkgs 钉死具体版本，Google 只保留较新的几个版本）
 { lib, pkgs, ... }:
 {
-  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "google-chrome" ];
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+      "google-chrome"
+      "vscode"
+    ];
 
   environment.systemPackages = [
     # --ozone-platform-hint=auto：在 Wayland（Niri）下用原生 Wayland 而不是 XWayland，

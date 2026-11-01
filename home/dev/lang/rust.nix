@@ -17,8 +17,6 @@
     pkgs.rustup
   ];
 
-  # bash、SSH 登录和图形会话
+  # bash、zsh、SSH 登录和图形会话
   home.sessionVariables.RUSTUP_TOOLCHAIN = "stable";
-  # Nushell（Alacritty 直接启动 nu，不一定经过 bash 登录脚本，所以这里单独设一份）
-  programs.nushell.environmentVariables.RUSTUP_TOOLCHAIN = "stable";
 }

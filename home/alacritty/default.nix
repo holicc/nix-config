@@ -19,10 +19,10 @@
         size = 12;
       };
 
-      # 终端里直接启动 Nushell（Starship 提示符只接在 Nushell 上）。
+      # 终端里直接启动 zsh（Starship 提示符在 bash 和 zsh 里都启用）。
       # 登录 shell 和 SSH 仍是 bash，所以远程管理、脚本都不受影响；
-      # 想回到 bash 就在终端里输入 `bash`。Nushell 出问题时，`alacritty -e bash` 也能临时打开 bash
-      terminal.shell.program = "nu";
+      # 想回到 bash 就在终端里输入 `bash`。zsh 出问题时，`alacritty -e bash` 也能临时打开 bash
+      terminal.shell.program = "zsh";
 
       # 鼠标右键 = 复制选中的文字。触摸板上双指轻点或双指按下就是右键（Niri 的 tap 设置），
       # 所以"选中文字后双指点一下"即复制。Alacritty 默认的右键是"扩展选区"，这里覆盖掉了它。
