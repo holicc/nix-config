@@ -5,6 +5,7 @@
 #   system.nix 系统监控和剪贴板（btop、lsof、wl-clipboard）
 #   network.nix 网络调试（dig）
 #   claude.nix Claude Code（来自 unstable）
+#   hex.nix   Hex 本地语音输入（hex-plus 分支）
 #   vscode.nix VS Code
 #   lang/    语言工具链，全局安装，每种语言一个文件
 { ... }:
@@ -16,6 +17,7 @@
     ./system.nix
     ./network.nix
     ./claude.nix
+    ./hex.nix
     ./vscode.nix
     ./lang
   ];

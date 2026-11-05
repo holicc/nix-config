@@ -33,6 +33,10 @@
       flake = false;
     };
 
+    # Hex 本地语音输入：holicc 的 fork，hex-plus 分支；自带 nixpkgs-unstable，不跟随本仓库的 nixpkgs。
+    # 升级：nx update hex
+    hex.url = "git+https://github.com/holicc/hex?ref=hex-plus";
+
     # Catppuccin 统一配色：一处声明风味，Alacritty、btop、bat、fzf 等自动套用（见 home/theme）
     catppuccin = {
       url = "github:catppuccin/nix";
