@@ -4,6 +4,7 @@
 #   theme/    统一配色：catppuccin/nix（Macchiato），Alacritty、btop、bat 等自动套用
 #   alacritty/ 终端：字体、内边距、去标题栏（配色由 theme 提供）
 #   shell/    命令行环境：zsh + Starship 提示符
+#   agents/   个人 agent skill：源文件与工具无关，链接到各工具的 skills 目录
 #   dev/      开发环境：gh、gcc、语言工具链（Go、Rust、Python、Node.js）
 # 由 flake.nix 以 NixOS 模块方式集成，`nixos-rebuild switch` 会一并应用系统配置和这里的用户配置
 { pkgs, ... }:
@@ -14,6 +15,7 @@
     ./theme
     ./alacritty
     ./shell
+    ./agents
     ./dev
   ];
 
