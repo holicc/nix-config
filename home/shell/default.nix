@@ -68,7 +68,7 @@ in
       # nx 是自己的脚本，所以在这里声明子命令。新增或改名子命令时同步修改下面的列表
       _nx() {
         case $CURRENT in
-          2) compadd check build diff test boot switch update gens pkgs gc status proxy help ;;
+          2) compadd check build diff test boot switch update upstream gens pkgs gc status proxy help ;;
           3) [[ $words[2] == proxy ]] && compadd add list switch rm update on off status tun nodes use usage help ;;
           4) [[ $words[2] == proxy && $words[3] == tun ]] && compadd on off ;;
         esac

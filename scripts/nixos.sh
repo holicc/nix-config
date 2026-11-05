@@ -34,6 +34,7 @@ COMMANDS=(
   "boot|Check, then use on next boot without activating now (sudo)"
   "switch|Check, build and activate now; also used on next boot (sudo)"
   "update|Update flake inputs into flake.lock (all except neomacs; "update --all" includes neomacs; or name inputs: update nixpkgs, update neomacs); "update qingjian" also moves to the latest release; no build or switch, preview with: diff"
+  "upstream|Compare local vs upstream: pinned nixpkgs commits, kernel versions, release branches (read-only)"
   "gens|List all system generations (rollback targets)"
   "pkgs|List installed packages and fonts"
   "gc|Keep only the newest ${KEEP_GENERATIONS} system generations and reclaim space (sudo)"

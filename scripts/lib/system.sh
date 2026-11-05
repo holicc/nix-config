@@ -1,4 +1,4 @@
-# 系统相关命令：check / build / diff / test / boot / switch / update / gens / pkgs / gc / status。
+# 系统相关命令：check / build / diff / test / boot / switch / update / upstream / gens / pkgs / gc / status。
 # 每个命令是一个 cmd_<名字> 函数，命令名和说明登记在 nixos.sh 的 COMMANDS 表里。
 # 由 nixos.sh source 进来，不单独运行。
 
@@ -180,4 +180,65 @@ cmd_status() {
       printf '   ⚪ %-16s %s\n' "$s" "${state:-unknown}"
     fi
   done
+}
+
+# 上游某个提交的默认内核版本。只下载两个小文件（raw.githubusercontent.com），
+# 不用 `nix eval github:...`：那会把整个 nixpkgs 压缩包下载下来，直连时要好几分钟
+upstream_default_kernel() {
+  local raw="https://raw.githubusercontent.com/NixOS/nixpkgs/$1" series
+  series="$(curl -fsS -m 20 "${raw}/pkgs/top-level/linux-kernels.nix" \
+    | sed -nE 's/^ *linux_default = packages\.linux_([0-9]+)_([0-9]+);.*/\1.\2/p')" || true
+  [ -n "$series" ] || { echo unknown; return; }
+  curl -fsS -m 20 "${raw}/pkgs/os-specific/linux/kernel/kernels-org.json" \
+    | jq -r --arg s "$series" '.[$s].version // "unknown"' || echo unknown
+}
+
+# 对比本地与上游（只读，不改任何文件）：锁定的提交 vs 分支最新提交、内核版本、上游有哪些 channel 分支。
+# 查到有新版本后：nx update nixpkgs → nx diff → nx boot（内核要重启才生效）
+cmd_upstream() {
+  local kpath_ver='s|.*-linux-([^/]+)/.*|\1|'
+  local booted current
+  booted="$(readlink -f /run/booted-system/kernel | sed -E "$kpath_ver")"
+  current="$(readlink -f /run/current-system/kernel | sed -E "$kpath_ver")"
+
+  say "Local kernel"
+  echo "   running: $(uname -r)"
+  echo "   current system: ${current}"
+  [ "$booted" = "$current" ] || warn "current system has a different kernel than the booted one: reboot to use ${current}"
+
+  local name node ref want_ref locked_rev locked_ts remote_rev up_kernel
+  for name in nixpkgs nixpkgs-unstable; do
+    # flake.lock 里的节点名不一定等于 input 名（别的 input 自带同名依赖时会改叫 nixpkgs_2），
+    # 所以先从 root 查出本仓库这个 input 真正指向的节点
+    node="$(jq -r --arg n "$name" '.nodes.root.inputs[$n]' flake.lock)"
+    ref="$(jq -r --arg n "$node" '.nodes[$n].original.ref' flake.lock)"
+    locked_rev="$(jq -r --arg n "$node" '.nodes[$n].locked.rev' flake.lock)"
+    locked_ts="$(jq -r --arg n "$node" '.nodes[$n].locked.lastModified' flake.lock)"
+    # flake.nix 里声明的分支（想要的）和 flake.lock 里记录的分支（实际锁的）应该一致
+    want_ref="$(sed -nE "s|^ *${name}\.url = \"github:NixOS/nixpkgs/([^\"]+)\".*|\1|p" flake.nix)"
+    say "input: ${name}"
+    echo "   branch (flake.nix):  ${want_ref:-unknown}"
+    echo "   branch (flake.lock): ${ref}"
+    if [ -n "$want_ref" ] && [ "$want_ref" != "$ref" ]; then
+      warn "flake.lock was locked from a different branch than flake.nix declares: check 'git diff flake.lock'"
+    fi
+    echo "   locked commit:   ${locked_rev:0:7} ($(date -d "@${locked_ts}" +%F))"
+    remote_rev="$(timeout 30 git ls-remote https://github.com/NixOS/nixpkgs "refs/heads/${ref}" | cut -f1 || true)"
+    if [ -z "$remote_rev" ]; then
+      warn "could not reach GitHub (try: https_proxy=http://127.0.0.1:7890 ${PROG} upstream)"
+      continue
+    fi
+    echo "   upstream commit: ${remote_rev:0:7}  (latest of ${ref})"
+    up_kernel="$(upstream_default_kernel "$remote_rev")"
+    echo "   upstream kernel: ${up_kernel}  (local: ${current})"
+    if [ "$remote_rev" = "$locked_rev" ]; then
+      ok "up to date"
+    else
+      warn "newer commits available: ${PROG} update ${name}"
+    fi
+  done
+
+  say "Upstream release branches (stable)"
+  timeout 30 git ls-remote --heads https://github.com/NixOS/nixpkgs 'refs/heads/nixos-[0-9]*' \
+    | sed 's|.*refs/heads/||' | grep -v -- '-small' | sort -V | tail -3 | sed 's/^/   /' || warn "could not list upstream branches"
 }
