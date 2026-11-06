@@ -155,4 +155,12 @@ binds {
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete { quit; }
     Mod+Shift+P { power-off-monitors; }
+
+    // 语音输入（Hex）：右 Alt 按住说话，松开结束并粘贴。
+    // 单独修饰键绑定和 press/release 需要 niri 主分支（见 flake.nix 的 niri input，下个发布版起内置）。
+    // 用右 Alt 单键：不需要 Fn，也不影响正常输入
+    Alt_R {
+        press { spawn "hex" "dictation" "start"; }
+        release { spawn "hex" "dictation" "stop"; }
+    }
 }

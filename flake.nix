@@ -37,6 +37,14 @@
     # 升级：nx update hex
     hex.url = "git+https://github.com/holicc/hex?ref=hex-plus";
 
+    # Niri 主分支：发布版 26.04 还没有"按下/松开分别触发"和"单独修饰键绑定"（niri PR #3621，
+    # 2026-10-25 合并），Hex 的右 Alt 按住说话要用。下个发布版出来后删掉这个 input，
+    # 把 nixos/modules/niri.nix 的 package 去掉即可。
+    # 不跟随本仓库的 nixpkgs：它的包依赖 libdisplay-info 0.3，26.05 稳定分支没有，
+    # 所以用它自己锁定的 nixpkgs-unstable 构建（只影响 niri 本身的依赖）。
+    # 升级：nx update niri
+    niri.url = "github:niri-wm/niri";
+
     # Catppuccin 统一配色：一处声明风味，Alacritty、btop、bat、fzf 等自动套用（见 home/theme）
     catppuccin = {
       url = "github:catppuccin/nix";

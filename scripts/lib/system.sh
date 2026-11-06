@@ -15,7 +15,12 @@ cmd_check() {
   local tmp niri_ok=1
   tmp="$(mktemp --suffix=.kdl)"
   flake_attr "config.home-manager.users.${USER_NAME}.xdg.configFile.\"niri/config.kdl\".text" > "$tmp" || niri_ok=0
-  if [ "$niri_ok" = 1 ] && niri validate -c "$tmp" 2>&1 | grep -v -E 'DEBUG.*niri_config'; then :; else niri_ok=0; fi
+  # 用配置里声明的 niri 包校验（不是 PATH 里正在运行的那个）：配置用了主分支才有的语法时，
+  # 运行中的旧版 niri 会误报失败
+  local niri_bin
+  niri_bin="$(flake_attr config.programs.niri.package.outPath 2>/dev/null)/bin/niri"
+  [ -x "$niri_bin" ] || niri_bin=niri
+  if [ "$niri_ok" = 1 ] && "$niri_bin" validate -c "$tmp" 2>&1 | grep -v -E 'DEBUG.*niri_config'; then :; else niri_ok=0; fi
   rm -f "$tmp"
   [ "$niri_ok" = 1 ] || die "Niri config validation failed (see output above)"
   ok "Niri config is valid"

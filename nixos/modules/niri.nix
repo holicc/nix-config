@@ -1,11 +1,13 @@
 # 图形桌面（系统层）：Niri + greetd/tuigreet + alacritty + grim/slurp
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 {
   # Niri：滚动平铺的 Wayland 合成器。
   # 选它：Wayland 原生、资源占用小，核显下更省电；
   # 需 ≥25.05 才有 Overview 功能（26.05 的 nixpkgs 满足）。
   # 排查方向：若版本不够，检查 nixpkgs 分支，或 `niri --version`
   programs.niri.enable = true;
+  # 用上游主分支的包（见 flake.nix 的 niri input），因为需要尚未发布的按键绑定功能。
+  programs.niri.package = inputs.niri.packages.${pkgs.stdenv.hostPlatform.system}.niri;
 
   # greetd + tuigreet：纯文本终端登录管理器。
   # 选它：不依赖 GTK/Qt 图形栈，内存与耗电都比 GDM/SDDM 低。
